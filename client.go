@@ -4,11 +4,11 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"time"
 
 	"github.com/siddontang/go-mysql/replication"
+	log "github.com/sirupsen/logrus"
 )
 
 var channelData = make(chan []byte, 0)
@@ -16,7 +16,7 @@ var channelData = make(chan []byte, 0)
 func mockSlave() {
 	master, err := loadMasterInfo("./masterBinLog")
 	if err != nil {
-		fmt.Println(err)
+		log.Errorf("loadMasterInfo fail. err:%s", err)
 		return
 	}
 	defer func() {
@@ -26,10 +26,16 @@ func mockSlave() {
 		ticker := time.Tick(time.Second)
 		for range ticker {
 			mp := master.Position()
-			fmt.Printf("%+v\n", mp)
-			_ = master.Save(mp)
+			if time.Now().Unix()%60 == 0 {
+				log.Infof("%+v\n", mp)
+			}
+			err := master.Save(mp)
+			if err != nil {
+				log.Errorf("masterInfo save failed. err:%s", err)
+			}
 		}
 	}()
+
 	// Create a binlog syncer with a unique server id, the server id must be different from other MySQL's.
 	// flavor is mysql or mariadb
 	cfg := replication.BinlogSyncerConfig{
