@@ -38,10 +38,7 @@ func (c *Conn) HandleCommand() error {
 	}
 
 	data, err := c.ReadPacket()
-	fmt.Println(string(data))
-	fmt.Println(data)
 	if err != nil {
-		fmt.Println(err)
 		c.Close()
 		c.Conn = nil
 		return err
@@ -50,7 +47,6 @@ func (c *Conn) HandleCommand() error {
 	if data[0] == COM_BINLOG_DUMP {
 		err := c.h.HandleDump(data)
 		if err != nil {
-			fmt.Println(err)
 			c.Close()
 			c.Conn = nil
 			return err
@@ -58,23 +54,17 @@ func (c *Conn) HandleCommand() error {
 		for {
 			var v []byte
 			v, err := c.h.HandleGetData()
-			fmt.Printf("handle get data:  ")
-			fmt.Println(v)
 			if err != nil {
-				fmt.Println(err)
 				c.Close()
 				c.Conn = nil
 				return err
 			}
 			err = c.writeValue(v)
 			if err != nil {
-				fmt.Printf("connection: ")
-				fmt.Println(err)
 				c.Close()
 				c.Conn = nil
 				return err
 			}
-			fmt.Println("writeValue Success")
 		}
 	} else {
 		v := c.dispatch(data)
@@ -86,7 +76,6 @@ func (c *Conn) HandleCommand() error {
 		}
 
 		if err != nil {
-			fmt.Println(err)
 			c.Close()
 			c.Conn = nil
 			return err

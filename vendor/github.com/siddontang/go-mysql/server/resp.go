@@ -32,7 +32,6 @@ func (c *Conn) writeDump(data []byte) error {
 	result := make([]byte, len(data)+5)
 	result[4] = OK_HEADER
 	copy(result[5:], data)
-	fmt.Printf("write dump len %d result: %+v\n", len(result), result)
 	return c.WritePacket(result)
 }
 
@@ -127,7 +126,6 @@ func (c *Conn) writeFieldList(fs []*Field) error {
 type noResponse struct{}
 
 func (c *Conn) writeValue(value interface{}) error {
-	fmt.Println(value)
 	switch v := value.(type) {
 	case noResponse:
 		return nil

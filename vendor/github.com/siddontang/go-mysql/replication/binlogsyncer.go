@@ -457,7 +457,6 @@ func (b *BinlogSyncer) writeRegisterSlaveCommand() error {
 	hostname := b.localHostname()
 
 	// This should be the name of slave host not the host we are connecting to.
-	// 4 + com + serverID + len_host + host + len_user + user + len_pass + pass + port
 	data := make([]byte, 4+1+4+1+len(hostname)+1+len(b.cfg.User)+1+len(b.cfg.Password)+2+4+4)
 	pos := 4
 
