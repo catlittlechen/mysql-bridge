@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"git.umlife.net/backend/mysql-bridge/kafka"
+	"github.com/siddontang/go-mysql/mysql"
 	"gopkg.in/yaml.v2"
 )
 
@@ -25,10 +26,12 @@ type Config struct {
 }
 
 type MysqlConfig struct {
-	Host     string `yaml:"host"`
-	Port     uint16 `yaml:"port"`
-	User     string `yaml:"user"`
-	Password string `yaml:"password"`
+	Host          string `yaml:"host"`
+	Port          uint16 `yaml:"port"`
+	User          string `yaml:"user"`
+	Password      string `yaml:"password"`
+	ServerID      uint32 `yaml:"server_id"`
+	ServerVersion string `yaml:"server_version"`
 }
 
 // database@table
@@ -78,5 +81,6 @@ func ParseConfigFile(filepath string) error {
 		masterCfg.Table.RepMap[database][table] = true
 	}
 
+	mysql.ServerVersion = masterCfg.Mysql.ServerVersion
 	return nil
 }
