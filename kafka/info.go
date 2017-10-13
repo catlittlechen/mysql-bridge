@@ -17,7 +17,8 @@ import (
 type OffsetInfo struct {
 	sync.RWMutex
 
-	PartitionOffset map[int32]int64
+	PartitionOffset map[int32]int64 `toml:"PartitionOffset"`
+	SequenceID      int64           `toml:"sequenceid"`
 
 	filePath     string
 	lastSaveTime time.Time

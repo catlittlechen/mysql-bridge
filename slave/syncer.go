@@ -6,7 +6,7 @@ import (
 
 	"git.umlife.net/backend/mysql-bridge/global"
 	"github.com/siddontang/go-mysql/replication"
-	"github.com/siddontang/go/log"
+	log "github.com/sirupsen/logrus"
 )
 
 type Syncer struct {

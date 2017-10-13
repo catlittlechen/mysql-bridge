@@ -5,6 +5,7 @@ import "errors"
 
 const (
 	MaxSeqID = 9000000000000000000
+	MinSeqID = 1
 )
 
 var (

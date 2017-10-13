@@ -1,6 +1,9 @@
 package kafka
 
 import (
+	"encoding/json"
+	"time"
+
 	"git.umlife.net/backend/mysql-bridge/global"
 	"github.com/Shopify/sarama"
 )
@@ -9,6 +12,7 @@ type PartitionMessage struct {
 	Consumer sarama.PartitionConsumer
 	Msg      *sarama.ConsumerMessage
 	BinLog   *global.BinLogData
+	Channel  chan *global.BinLogData
 }
 
 // KafkaConsumer
@@ -20,11 +24,8 @@ type KafkaConsumer struct {
 	partitonsList []int32
 	offsetInfo    *OffsetInfo
 
-	messageChannelMap    map[int32]chan *global.BinLogData
-	partitionConsumerMap map[int32]sarama.PartitionConsumer
-	partitionQueue       []*PartitionMessage
-
-	channel chan *global.BinLogData
+	partitionConsumerArray []*PartitionMessage
+	channel                chan *global.BinLogData
 }
 
 // NewKafkaConsumer .
@@ -51,24 +52,81 @@ func NewKafkaConsumer(config KafkaConsumerConfig) (*KafkaConsumer, error) {
 		return nil, err
 	}
 
-	client.messageChannelMap = make(map[int32]chan *global.BinLogData)
-	client.partitionConsumerMap = make(map[int32]sarama.PartitionConsumer)
-	client.channel = make(chan *global.BinLogData)
+	client.partitionConsumerArray = make([]*PartitionMessage, len(client.partitonsList))
 
-	for _, pid := range client.partitonsList {
-		client.messageChannelMap[pid] = make(chan *global.BinLogData)
+	for index, pid := range client.partitonsList {
 		offset, ok := client.offsetInfo.PartitionOffset[pid]
 		if ok {
-			client.partitionConsumerMap[pid], err = client.c.ConsumePartition(config.Topic, pid, offset)
+			client.partitionConsumerArray[index], err = client.NewPartitionMessgae(pid, offset)
 		} else {
-			client.partitionConsumerMap[pid], err = client.c.ConsumePartition(config.Topic, pid, sarama.OffsetOldest)
+			client.partitionConsumerArray[index], err = client.NewPartitionMessgae(pid, sarama.OffsetOldest)
 		}
 		if err != nil {
 			return nil, err
 		}
 	}
 
+	// 排队咯！
+	go func() {
+		// Wait for PartitionConsumer to get the Message
+		// Usually, all of PartitionConsumers have more than one Message
+		length := len(client.partitionConsumerArray)
+		for i := 0; i < length; i++ {
+			if client.partitionConsumerArray[i].BinLog == nil {
+				time.Sleep(time.Second)
+			}
+			/*
+				if client.partitionConsumerArray[i].BinLog == nil {
+					// TODO close and panic?
+				}
+			*/
+		}
+
+		for i := 0; i < length-1; i++ {
+			tmp := i
+			for j := i + 1; j < length; j++ {
+				if client.partitionConsumerArray[tmp].BinLog.SeqID > client.partitionConsumerArray[j].BinLog.SeqID {
+					tmp = j
+				}
+			}
+			tmpPC := client.partitionConsumerArray[tmp]
+			client.partitionConsumerArray[tmp] = client.partitionConsumerArray[i]
+			client.partitionConsumerArray[i] = tmpPC
+		}
+
+		pc := client.partitionConsumerArray[0]
+
+	}()
+
 	return client, nil
+}
+
+func (k *KafkaConsumer) NewPartitionMessgae(pid int32, offset int64) (*PartitionMessage, error) {
+	cp, err := k.c.ConsumePartition(k.cfg.Topic, pid, offset)
+	if err != nil {
+		return nil, err
+	}
+
+	pm := &PartitionMessage{
+		Consumer: cp,
+		BinLog:   nil,
+		Msg:      nil,
+		Channel:  make(chan *global.BinLogData),
+	}
+	go func() {
+		for msg := range pm.Consumer.Messages() {
+			binlog := new(global.BinLogData)
+			_ = json.Unmarshal(msg.Value, binlog)
+			pm.Msg = msg
+			pm.BinLog = binlog
+			pm.Channel <- binlog
+		}
+	}()
+	return pm, nil
+}
+
+func (k *KafkaConsumer) Message() <-chan *global.BinLogData {
+	return k.channel
 }
 
 // Close .
