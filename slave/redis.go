@@ -60,7 +60,7 @@ func GetSeqID() (uint64, error) {
 	}
 
 	if value > global.MaxSeqID {
-		value = 1
+		value = global.MinSeqID
 	}
 	_, err = conn.Do("SET", redisSeqKey, value)
 	if err != nil {

@@ -129,8 +129,9 @@ func (h *MockHandler) HandleDump(data []byte) error {
 }
 
 func (h *MockHandler) HandleGetData() ([]byte, error) {
-	data := <-channelData
-	return data, nil
+	// rewirte binlog
+	msg := <-kconsumer.Message()
+	return msg.BinLog.Data, nil
 }
 
 func (h *MockHandler) HandleRegisterSlave(data []byte) error {
