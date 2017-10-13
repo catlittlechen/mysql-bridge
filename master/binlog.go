@@ -2,8 +2,18 @@
 
 package main
 
-func WriteRelayLog() {
+// doing
+// TODO prepar
+
+// translation BEGIN + **** + XID
+// rotate close + open + fileDescription
+
+func NewBinLog() {
+
+}
+
+func WriteBinlog() {
 	for msg := range kconsumer.Message() {
-		_ = msg
+		kconsumer.Callback(msg)
 	}
 }
