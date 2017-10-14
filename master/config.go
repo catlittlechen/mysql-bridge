@@ -29,6 +29,9 @@ type MysqlConfig struct {
 	Password      string `yaml:"password"`
 	ServerID      uint32 `yaml:"server_id"`
 	ServerVersion string `yaml:"server_version"`
+
+	BinLogDir  string `yaml:"binlog_dir"`
+	BinLogSize int64  `yaml:"binlog_size"`
 }
 
 func ParseConfigFile(filepath string) error {
