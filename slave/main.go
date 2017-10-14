@@ -48,9 +48,9 @@ func main() {
 	}
 
 	// Init syncer
-	syncer := NewSyncer()
+	syncer := NewSyncer(info)
 	go func() {
-		serr := syncer.Run(info)
+		serr := syncer.Run()
 		if serr != nil {
 			log.Errorf("syncer run failed. err:%s", serr)
 			return

@@ -5,11 +5,11 @@ package global
 import "encoding/json"
 
 type BinLogData struct {
-	SeqID uint64 `json:"seqid"`
-	Data  []byte `json:"data"`
+	SeqID uint64   `json:"seqid"`
+	Data  [][]byte `json:"data"`
 }
 
-func NewBinLogData(seqID uint64, data []byte) *BinLogData {
+func NewBinLogData(seqID uint64, data [][]byte) *BinLogData {
 	return &BinLogData{
 		SeqID: seqID,
 		Data:  data,
