@@ -4,16 +4,21 @@ package main
 import (
 	"encoding/binary"
 	"errors"
+	"io"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/siddontang/go-mysql/mysql"
+	"github.com/siddontang/go-mysql/replication"
 	"github.com/siddontang/go/log"
 )
 
 type MockHandler struct {
-	Post     uint32
+	Pos      uint32
 	FileName string
+	RedoLog  *os.File
 	Args     map[string]interface{}
 }
 
@@ -119,19 +124,82 @@ func (h *MockHandler) HandleDump(data []byte) error {
 		return errors.New("wrong format")
 	}
 
-	h.Post = binary.LittleEndian.Uint32(data[1:5])
+	h.Pos = binary.LittleEndian.Uint32(data[1:5])
 	//mod := binary.LittleEndian.Uint16(data[5:7])
 	//serverID := binary.LittleEndian.Uint32(data[7:11])
 	h.FileName = string(data[11:])
-	log.Debugf("dump data post:[%d] filename:[%s]", h.Post, h.FileName)
-	// TODO
+	log.Debugf("dump data pos:[%d] filename:[%s]", h.Pos, h.FileName)
+
+	filename := filepath.Join(masterCfg.Mysql.BinLogDir, h.FileName)
+	var err error
+	h.RedoLog, err = os.Open(filename)
+	if err != nil {
+		return err
+	}
+	_, err = h.RedoLog.Seek(int64(h.Pos), 1)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
 func (h *MockHandler) HandleGetData() ([]byte, error) {
-	// rewirte binlog
-	// msg := <-kconsumer.Message()
-	return nil, nil
+	var (
+		eventHeader = new(replication.EventHeader)
+		hold        []byte
+		data        []byte
+		needLen     = replication.EventHeaderSize
+		n           int
+		err         error
+	)
+
+	// Header
+	hold = make([]byte, replication.EventHeaderSize)
+	for {
+		data = make([]byte, needLen)
+		n, err = h.RedoLog.Read(data)
+		if err == nil {
+			copy(hold[len(hold)-needLen:], data)
+			break
+		}
+
+		if err != io.EOF {
+			return nil, err
+		}
+
+		copy(hold[len(hold)-needLen:], data)
+		needLen -= n
+		time.Sleep(time.Second)
+	}
+
+	err = eventHeader.Decode(hold)
+	if err != nil {
+		return nil, err
+	}
+
+	needLen = int(eventHeader.EventSize) - replication.EventHeaderSize
+	data = make([]byte, eventHeader.EventSize)
+	copy(data, hold)
+	hold = data
+	for {
+		data = make([]byte, needLen)
+		n, err = h.RedoLog.Read(data)
+		if err == nil {
+			copy(hold[len(hold)-needLen:], data)
+			break
+		}
+
+		if err != io.EOF {
+			return nil, err
+		}
+
+		copy(hold[replication.EventHeaderSize-needLen:], data)
+		needLen -= n
+		time.Sleep(time.Second)
+	}
+
+	return hold, nil
 }
 
 func (h *MockHandler) HandleRegisterSlave(data []byte) error {

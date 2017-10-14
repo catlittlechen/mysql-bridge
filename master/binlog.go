@@ -7,6 +7,7 @@ import (
 	"hash/crc32"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
@@ -150,7 +151,7 @@ func WriteBinlog() (err error) {
 	if len(useFileInfos) != 0 {
 		sort.Strings(useFileInfos)
 		lastFileName = useFileInfos[len(useFileInfos)-1]
-		file, err = os.OpenFile(lastFileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0643)
+		file, err = os.OpenFile(filepath.Join(masterCfg.Mysql.BinLogDir, lastFileName), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0643)
 	} else {
 		file, err = CreateNewBinLogFile(lastFileName)
 	}
@@ -190,7 +191,7 @@ func WriteBinlog() (err error) {
 }
 
 func CreateNewBinLogFile(filename string) (file *os.File, err error) {
-	file, err = os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0642)
+	file, err = os.OpenFile(filepath.Join(masterCfg.Mysql.BinLogDir, filename), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0642)
 	if err != nil {
 		return
 	}
