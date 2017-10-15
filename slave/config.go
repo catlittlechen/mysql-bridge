@@ -39,8 +39,10 @@ type RedisConfig struct {
 
 // database@table
 type TableConfig struct {
-	Replication []string `yaml:"replication"`
-	Prepar      []string `yaml:"prepar"`
+	ReplicationTopic string   `yaml:"replication_topic"`
+	Replication      []string `yaml:"replication"`
+	PreparTopic      string   `yaml:"prepar_topic"`
+	Prepar           []string `yaml:"prepar"`
 
 	RepMap map[string]map[string]bool
 	PreMap map[string]map[string]bool

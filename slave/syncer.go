@@ -46,9 +46,13 @@ func (s *Syncer) Run() (err error) {
 	}
 
 	var (
+		event *replication.BinlogEvent
+
 		transaction [][]byte
-		event       *replication.BinlogEvent
 		shouldWrite bool
+
+		preTransaction [][]byte
+		shouldWritePre bool
 
 		// master binlog info
 		name = s.info.Name
@@ -70,7 +74,7 @@ func (s *Syncer) Run() (err error) {
 			if strings.EqualFold(strings.ToUpper(string(qe.Query)), "BEGIN") || transaction != nil {
 				transaction = append(transaction, event.RawData)
 			} else {
-				err = s.record([][]byte{event.RawData}, name, event.Header.LogPos)
+				err = s.record([][]byte{event.RawData}, name, event.Header.LogPos, true)
 				if err != nil {
 					fmt.Println("syncer record failed. err:%s", err)
 					return
@@ -85,17 +89,37 @@ func (s *Syncer) Run() (err error) {
 					shouldWrite = true
 				}
 			}
+			if _, ok := slaveCfg.Table.PreMap[strings.ToLower(string(te.Schema))]; ok {
+				if slaveCfg.Table.PreMap[strings.ToLower(string(te.Schema))][strings.ToLower(string(te.Table))] {
+					if preTransaction == nil {
+						preTransaction = append(preTransaction, transaction[0], event.RawData)
+						shouldWritePre = true
+					}
+				}
+			}
 		case replication.XID_EVENT:
 			// deal with commit, pop kafka
-			if len(transaction) != 1 {
+			if transaction != nil && len(transaction) != 1 {
 				transaction = append(transaction, event.RawData)
-				err = s.record(transaction, name, event.Header.LogPos)
+				err = s.record(transaction, name, event.Header.LogPos, true)
 				if err != nil {
 					fmt.Println("syncer record failed. err:%s", err)
 					return
 				}
 			}
+
+			if preTransaction != nil && len(preTransaction) != 1 {
+				preTransaction = append(preTransaction, event.RawData)
+				err = s.record(preTransaction, name, event.Header.LogPos, false)
+				if err != nil {
+					fmt.Println("syncer record failed. err:%s", err)
+					return
+				}
+			}
+
 			transaction = nil
+			shouldWrite = false
+			preTransaction = nil
 			shouldWrite = false
 
 		case replication.ROTATE_EVENT:
@@ -103,14 +127,16 @@ func (s *Syncer) Run() (err error) {
 		case replication.FORMAT_DESCRIPTION_EVENT:
 			// ignore
 		default:
-			if transaction == nil {
-				err = s.record(transaction, name, event.Header.LogPos)
+			if transaction == nil && preTransaction == nil {
+				err = s.record(transaction, name, event.Header.LogPos, true)
 				if err != nil {
 					fmt.Println("syncer record failed. err:%s", err)
 					return
 				}
 			} else if shouldWrite {
 				transaction = append(transaction, event.RawData)
+			} else if shouldWritePre {
+				preTransaction = append(preTransaction, event.RawData)
 			}
 		}
 
@@ -118,13 +144,13 @@ func (s *Syncer) Run() (err error) {
 	return
 }
 
-func (s *Syncer) record(dataList [][]byte, name string, pos uint32) (err error) {
+func (s *Syncer) record(dataList [][]byte, name string, pos uint32, master bool) (err error) {
 
 	var (
 		seqID uint64
 		b     []byte
 	)
-	seqID, err = GetSeqID()
+	seqID, err = GetSeqID(master)
 	if err != nil {
 		log.Errorf("getSeqID failed. err:%s", err)
 		return
@@ -137,7 +163,12 @@ func (s *Syncer) record(dataList [][]byte, name string, pos uint32) (err error) 
 		return
 	}
 
-	err = kproducer.Send(slaveCfg.Kafka.Topic, b)
+	topic := slaveCfg.Table.ReplicationTopic
+	if !master {
+		topic = slaveCfg.Table.PreparTopic
+	}
+
+	err = kproducer.Send(topic, b)
 	if err != nil {
 		log.Errorf("kafka producer send failed. err:%s", err)
 		return

@@ -16,7 +16,7 @@ import (
 	"github.com/siddontang/go-mysql/replication"
 )
 
-func ChangePosition(data []byte, pos uint32) []byte {
+func ChangePositionAndCheckSum(data []byte, pos uint32) []byte {
 	binary.LittleEndian.PutUint32(data[13:], pos)
 	binary.LittleEndian.PutUint32(data[len(data)-4:], crc32.ChecksumIEEE(data[0:pos]))
 	return data
@@ -176,7 +176,7 @@ func WriteBinlog() (err error) {
 		length = 0
 		for _, binlog := range binLogList {
 			size += uint32(len(binlog))
-			binlog = ChangePosition(binlog, size)
+			binlog = ChangePositionAndCheckSum(binlog, size)
 			copy(data[length:], binlog)
 		}
 		_, _ = file.Write(data)
@@ -196,7 +196,7 @@ func CreateNewBinLogFile(filename string) (file *os.File, err error) {
 		return
 	}
 	data := NewFormatDescriptionEventData()
-	data = ChangePosition(data, uint32(len(data)+4))
+	data = ChangePositionAndCheckSum(data, uint32(len(data)+4))
 	_, _ = file.Write(data)
 	return
 }
@@ -209,11 +209,11 @@ func RotateFile(file *os.File) (nextFile *os.File, err error) {
 		nextFile, err = CreateNewBinLogFile(nextFileName)
 
 		data := NewRotateEventData(nextFileName, true)
-		data = ChangePosition(data, uint32(size)+uint32(len(data)))
+		data = ChangePositionAndCheckSum(data, uint32(size)+uint32(len(data)))
 		_, _ = file.Write(data)
 
 		data = NewRotateEventData(nextFileName, false)
-		data = ChangePosition(data, 0)
+		data = ChangePositionAndCheckSum(data, 0)
 		_, _ = file.Write(data)
 
 		_ = file.Close()

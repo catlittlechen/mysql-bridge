@@ -41,20 +41,28 @@ func NewRedisPool(host string, db int) *redis.Pool {
 
 var redisPool *redis.Pool
 
-const redisSeqKey = "master_binlog_seqid"
+const (
+	redisMasterSeqKey = "master_binlog_seqid"
+	redisPreparSeqKey = "prepar_binlog_seqid"
+)
 
 func InitRedis() error {
 	redisPool = NewRedisPool(slaveCfg.Redis.Host, slaveCfg.Redis.Db)
 	return nil
 }
 
-func GetSeqID() (uint64, error) {
+func GetSeqID(master bool) (uint64, error) {
 	conn := redisPool.Get()
 	defer func() {
 		_ = conn.Close()
 	}()
 
-	value, err := redis.Uint64(conn.Do("INCRBY", redisSeqKey, 1))
+	key := redisMasterSeqKey
+	if !master {
+		key = redisPreparSeqKey
+	}
+
+	value, err := redis.Uint64(conn.Do("INCRBY", key, 1))
 	if err != nil {
 		return 0, err
 	}
@@ -62,7 +70,8 @@ func GetSeqID() (uint64, error) {
 	if value > global.MaxSeqID {
 		value = global.MinSeqID
 	}
-	_, err = conn.Do("SET", redisSeqKey, value)
+
+	_, err = conn.Do("SET", key, value)
 	if err != nil {
 		return 0, err
 	}

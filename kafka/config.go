@@ -9,7 +9,6 @@ import (
 type KafkaProducerConfig struct {
 	BrokerList []string      `yaml:"broker_list"`
 	FlushTime  time.Duration `yaml:"flush_time"`
-	Topic      string        `yaml:"topic"`
 }
 
 // KafkaConsumerConfig .
