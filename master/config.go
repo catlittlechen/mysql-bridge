@@ -45,5 +45,8 @@ func ParseConfigFile(filepath string) error {
 	}
 
 	mysql.ServerVersion = masterCfg.Mysql.ServerVersion
+	if masterCfg.Kafka.RingLen == 0 {
+		masterCfg.Kafka.RingLen = 10240
+	}
 	return nil
 }

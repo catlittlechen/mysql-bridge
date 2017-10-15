@@ -16,6 +16,9 @@ type KafkaConsumerConfig struct {
 	BrokerList []string      `yaml:"broker_list"`
 	Timeout    time.Duration `yaml:"timeout"`
 	Topic      string        `yaml:"topic"`
-	OffsetDir  string        `yaml:"offset_dir"`
-	Ticker     time.Duration `yaml:"ticker"`
+
+	OffsetDir    string        `yaml:"offset_dir"`
+	DefaultSeqID uint64        `yaml:"default_seq_id"`
+	Ticker       time.Duration `yaml:"ticker"`
+	RingLen      int           `yaml:"ring_len"`
 }

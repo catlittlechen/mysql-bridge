@@ -15,8 +15,6 @@ type ConsumerMessage struct {
 
 type PartitionMessage struct {
 	consumer sarama.PartitionConsumer
-	Msg      *ConsumerMessage
-	Channel  chan *ConsumerMessage
 }
 
 // KafkaConsumer
@@ -25,12 +23,16 @@ type KafkaConsumer struct {
 	c      sarama.Consumer
 	closed bool
 
-	offsetInfo    *OffsetInfo
+	offsetInfo *OffsetInfo
+	batter     uint64
+
 	partitonsList []int32
+
+	ring []*ConsumerMessage
+	now  int
 
 	partitionConsumerArray []*PartitionMessage
 	channel                chan *ConsumerMessage
-	seqID                  uint64
 }
 
 // NewKafkaConsumer .
@@ -58,6 +60,14 @@ func NewKafkaConsumer(config KafkaConsumerConfig) (*KafkaConsumer, error) {
 		return nil, err
 	}
 
+	client.ring = make([]*ConsumerMessage, config.RingLen)
+	client.now = 0
+	if client.offsetInfo.SequenceID == 0 {
+		client.batter = config.DefaultSeqID
+	} else {
+		client.batter = client.offsetInfo.SequenceID
+	}
+
 	client.partitionConsumerArray = make([]*PartitionMessage, len(client.partitonsList))
 	client.channel = make(chan *ConsumerMessage, 1024)
 
@@ -73,90 +83,28 @@ func NewKafkaConsumer(config KafkaConsumerConfig) (*KafkaConsumer, error) {
 		}
 	}
 
-	// 排队咯！
 	go func() {
-		// Wait for PartitionConsumer to get the Message
-		// Usually, all of PartitionConsumers have more than one Message
-		length := len(client.partitionConsumerArray)
-		for i := 0; i < length; i++ {
-			if client.partitionConsumerArray[i].Msg == nil {
-				time.Sleep(time.Second)
-			}
-			/*
-				if client.partitionConsumerArray[i].BinLog == nil {
-					// TODO close and panic?
-				}
-			*/
-		}
-
-		for i := 0; i < length-1; i++ {
-			tmp := i
-			for j := i + 1; j < length; j++ {
-				if client.partitionConsumerArray[tmp].Msg.BinLog.SeqID > client.partitionConsumerArray[j].Msg.BinLog.SeqID {
-					tmp = j
-				}
-			}
-			tmpPC := client.partitionConsumerArray[tmp]
-			client.partitionConsumerArray[tmp] = client.partitionConsumerArray[i]
-			client.partitionConsumerArray[i] = tmpPC
-		}
-
-		pc := client.partitionConsumerArray[0]
-		if client.offsetInfo.SequenceID == 0 {
-			client.seqID = pc.Msg.BinLog.SeqID
-		} else {
-			client.seqID = client.offsetInfo.SequenceID
-		}
-
 		for {
-			if client.closed {
-				break
+			client.now += 1
+			if client.now == client.cfg.RingLen {
+				client.now = 0
 			}
-
-			pc = client.partitionConsumerArray[0]
-
-			// less bug?
-			if client.seqID > pc.Msg.BinLog.SeqID {
-				// TODO
+			for client.ring[client.now] == nil {
+				time.Sleep(time.Second)
+				continue
 			}
-
-			pc.Msg = nil
-			msg := <-pc.Channel
-
-			client.channel <- msg
-			client.seqID += 1
-
-			if client.seqID > global.MaxSeqID {
-				client.seqID = global.MinSeqID
-			}
-
-			for i := 0; i < 3; i++ {
-				if pc.Msg == nil {
-					time.Sleep(time.Second)
-				}
-			}
-			/*
-				if pc.Msg == nil {
-					// TODO
-				}
-			*/
-
-			for i := 0; i < length-1; i++ {
-				if client.partitionConsumerArray[i].Msg.BinLog.SeqID < client.partitionConsumerArray[i+1].Msg.BinLog.SeqID {
-					break
-				}
-
-				tmpPC := client.partitionConsumerArray[i]
-				client.partitionConsumerArray[i] = client.partitionConsumerArray[i+1]
-				client.partitionConsumerArray[i+1] = tmpPC
+			client.channel <- client.ring[client.now]
+			client.ring[client.now] = nil
+			if client.now == 0 {
+				client.batter += uint64(client.cfg.RingLen)
 			}
 		}
-
 	}()
 
 	return client, nil
 }
 
+// batter/0    batter+now-1/now-1  batter-len+now/now      batter-1/len-1
 func (k *KafkaConsumer) NewPartitionMessgae(pid int32, offset int64) (*PartitionMessage, error) {
 	cp, err := k.c.ConsumePartition(k.cfg.Topic, pid, offset)
 	if err != nil {
@@ -165,18 +113,33 @@ func (k *KafkaConsumer) NewPartitionMessgae(pid int32, offset int64) (*Partition
 
 	pm := &PartitionMessage{
 		consumer: cp,
-		Msg:      nil,
-		Channel:  make(chan *ConsumerMessage),
 	}
 	go func() {
 		for msg := range pm.consumer.Messages() {
 			binlog := new(global.BinLogData)
 			_ = json.Unmarshal(msg.Value, binlog)
-			pm.Msg = &ConsumerMessage{
-				Msg:    msg,
-				BinLog: binlog,
+			for {
+				if k.batter-uint64(k.cfg.RingLen-k.now) > binlog.SeqID {
+					break
+				}
+
+				if k.batter-uint64(k.cfg.RingLen-k.now) <= binlog.SeqID && binlog.SeqID < k.batter+uint64(k.now)-1 {
+					if k.batter > binlog.SeqID {
+						k.ring[k.cfg.RingLen-int(k.batter-binlog.SeqID)] = &ConsumerMessage{
+							Msg:    msg,
+							BinLog: binlog,
+						}
+					} else {
+						k.ring[binlog.SeqID-k.batter] = &ConsumerMessage{
+							Msg:    msg,
+							BinLog: binlog,
+						}
+					}
+					break
+				}
+
+				time.Sleep(time.Second)
 			}
-			pm.Channel <- pm.Msg
 		}
 	}()
 	return pm, nil
