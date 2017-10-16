@@ -3,11 +3,12 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"net"
 	"strconv"
 
 	"git.umlife.net/backend/mysql-bridge/kafka"
-
+	logs "git.umlife.net/backend/mysql-bridge/log"
 	"github.com/siddontang/go-mysql/server"
 	log "github.com/sirupsen/logrus"
 )
@@ -22,9 +23,12 @@ func main() {
 
 	err := ParseConfigFile(*config)
 	if err != nil {
-		log.Errorf("parse configFile failed. err:%s", err)
+		fmt.Printf("parse configFile failed. err:%s", err)
 		return
 	}
+
+	// init log
+	logs.ConfiglogrusrusWithFile(masterCfg.Logconf)
 
 	// init kafka
 	kconsumer, err = kafka.NewKafkaConsumer(masterCfg.Kafka)

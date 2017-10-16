@@ -3,7 +3,8 @@
 	"GoVersion": "go1.8",
 	"GodepVersion": "v77",
 	"Packages": [
-		"./."
+		"./master",
+		"./slave"
 	],
 	"Deps": [
 		{
@@ -12,8 +13,61 @@
 			"Rev": "a368813c5e648fee92e5f6c30e3944ff9d5e8895"
 		},
 		{
+			"ImportPath": "github.com/Shopify/sarama",
+			"Comment": "v1.10.1-122-gf7e3024",
+			"Rev": "f7e3024a61603647461f4b40bd8f3db88871bf9d"
+		},
+		{
+			"ImportPath": "github.com/davecgh/go-spew/spew",
+			"Rev": "5215b55f46b2b919f50a1df0eaa5886afe4e3b3d"
+		},
+		{
+			"ImportPath": "github.com/eapache/go-resiliency/breaker",
+			"Comment": "v1.0.0-1-ged0319b",
+			"Rev": "ed0319b32e66e3295db52695ba3ee493e823fbfe"
+		},
+		{
+			"ImportPath": "github.com/eapache/go-xerial-snappy",
+			"Rev": "bb955e01b9346ac19dc29eb16586c90ded99a98c"
+		},
+		{
+			"ImportPath": "github.com/eapache/queue",
+			"Comment": "v1.0.1-2-gd1df561",
+			"Rev": "d1df561eb6b9ffdac8dd98f943e9e9096c76c059"
+		},
+		{
+			"ImportPath": "github.com/garyburd/redigo/internal",
+			"Rev": "9f3a0116c9f72c5a56f958206a43dc881b502c37"
+		},
+		{
+			"ImportPath": "github.com/garyburd/redigo/redis",
+			"Rev": "9f3a0116c9f72c5a56f958206a43dc881b502c37"
+		},
+		{
+			"ImportPath": "github.com/golang/snappy",
+			"Rev": "ec642410cd033af63620b66a91ccbd3c69c2c59a"
+		},
+		{
 			"ImportPath": "github.com/juju/errors",
 			"Rev": "c7d06af17c68cd34c835053720b21f6549d9b0ee"
+		},
+		{
+			"ImportPath": "github.com/pierrec/lz4",
+			"Rev": "5c9560bfa9ace2bf86080bf40d46b34ae44604df"
+		},
+		{
+			"ImportPath": "github.com/pierrec/xxHash/xxHash32",
+			"Comment": "v0.1-4-g5a00444",
+			"Rev": "5a004441f897722c627870a981d02b29924215fa"
+		},
+		{
+			"ImportPath": "github.com/rcrowley/go-metrics",
+			"Rev": "1f30fe9094a513ce4c700b9a54458bbb0c96996c"
+		},
+		{
+			"ImportPath": "github.com/rifflock/lfshook",
+			"Comment": "v1.2-19-g3bcf86f",
+			"Rev": "3bcf86f879c771238f8a67832a1af71308801a47"
 		},
 		{
 			"ImportPath": "github.com/satori/go.uuid",
@@ -68,6 +122,10 @@
 		{
 			"ImportPath": "golang.org/x/sys/windows",
 			"Rev": "5eaf0df67e70d6997a9fe0ed24383fa1b01638d3"
+		},
+		{
+			"ImportPath": "gopkg.in/yaml.v2",
+			"Rev": "a5b47d31c556af34a302ce5d659e6fea44d90de0"
 		}
 	]
 }

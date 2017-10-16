@@ -15,7 +15,7 @@ import (
 
 	"github.com/siddontang/go-mysql/mysql"
 	"github.com/siddontang/go-mysql/replication"
-	"github.com/siddontang/go/log"
+	log "github.com/sirupsen/logrus"
 )
 
 type MockHandler struct {
@@ -80,7 +80,7 @@ func (h *MockHandler) HandleQuery(query string) (*mysql.Result, error) {
 			if len(array) > num {
 				var value interface{}
 				if strings.HasPrefix(array[num], "@@") {
-					value = h.GetValue(array[num])
+					value = h.GetValue(array[num][2:])
 				} else {
 					value = array[num]
 				}

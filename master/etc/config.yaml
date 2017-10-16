@@ -1,0 +1,28 @@
+log_config: ./etc/logrus.yaml
+
+second: 1s
+
+mysql:
+    host: 127.0.0.1
+    port: 4000
+    user: root
+    password: 1232123
+    server_id: 10086
+    server_version: 5.6.33-0ubuntu0.14.04.1-log (Ubuntu)
+    binlog_dir: ./data/binlog
+    binlog_size: 104857600
+
+kafka:
+    broker_list:
+        - 127.0.0.1:9092
+    timeout: 1s
+    topic: test
+    offset_dir: ./data/offset
+    default_seq_id: 10
+    ticker: 1s
+    ring_len: 102400
+
+mockargs:
+    server_uuid: 2857b32d-9e9a-11e7-a268-94de80cb4372
+    global.binlog_checksum: NONE
+    GLOBAL.GTID_MODE: OFF

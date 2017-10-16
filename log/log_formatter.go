@@ -56,7 +56,7 @@ func (f *NoColorTextFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 
 	timestampFormat := f.TimestampFormat
 	if timestampFormat == "" {
-		timestampFormat = logrus.DefaultTimestampFormat
+		timestampFormat = time.RFC3339
 	}
 
 	f.printColored(b, entry, keys, timestampFormat)

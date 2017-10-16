@@ -2,11 +2,11 @@ package kafka
 
 import (
 	"encoding/json"
-	"qcserver/src/log"
 	"time"
 
 	"git.umlife.net/backend/mysql-bridge/global"
 	"github.com/Shopify/sarama"
+	log "github.com/sirupsen/logrus"
 )
 
 type ConsumerMessage struct {
