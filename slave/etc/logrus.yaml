@@ -1,0 +1,10 @@
+enable_stdout: true
+disable_color: false
+
+paths:
+    panic: ""
+    fatal: ""
+    error: "/home/litianlun/log/gateway/adnow/error.log"
+    warn:  ""
+    info:  "/home/litianlun/log/gateway/adnow/info.log"
+    debug: ""

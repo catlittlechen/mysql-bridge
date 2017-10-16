@@ -4,11 +4,13 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"git.umlife.net/backend/mysql-bridge/kafka"
+	logs "git.umlife.net/backend/mysql-bridge/log"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -22,9 +24,12 @@ func main() {
 
 	err := ParseConfigFile(*config)
 	if err != nil {
-		log.Errorf("parse configFile failed. err:%s", err)
+		fmt.Printf("parse configFile failed. err:%s\n", err)
 		return
 	}
+
+	// init log
+	logs.ConfiglogrusrusWithFile(slaveCfg.Logconf)
 
 	// Init redis
 	err = InitRedis()
