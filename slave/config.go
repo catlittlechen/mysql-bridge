@@ -3,12 +3,11 @@ package main
 
 import (
 	"errors"
-	"io/ioutil"
 	"strings"
 	"time"
 
+	"git.umlife.net/backend/mysql-bridge/global"
 	"git.umlife.net/backend/mysql-bridge/kafka"
-	"gopkg.in/yaml.v2"
 )
 
 var slaveCfg Config
@@ -49,11 +48,8 @@ type TableConfig struct {
 }
 
 func ParseConfigFile(filepath string) error {
-	if confile, err := ioutil.ReadFile(filepath); nil == err {
-		if err = yaml.Unmarshal(confile, &slaveCfg); nil != err {
-			return err
-		}
-	} else {
+	err := global.ParseYamlFile(filepath, &slaveCfg)
+	if err != nil {
 		return err
 	}
 

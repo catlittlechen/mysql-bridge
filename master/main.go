@@ -26,8 +26,10 @@ func main() {
 		fmt.Printf("parse configFile failed. err:%s", err)
 		return
 	}
+	fmt.Printf("config: %+v\n", masterCfg)
 
 	// init log
+	log.SetLevel(log.DebugLevel)
 	logs.ConfiglogrusrusWithFile(masterCfg.Logconf)
 
 	// init kafka
@@ -36,6 +38,7 @@ func main() {
 		log.Errorf("new kafka conusmer failed. err:%s", err)
 		return
 	}
+	log.Info("new kafka conusmer success")
 	defer kconsumer.Close()
 
 	// init binlog
@@ -52,6 +55,7 @@ func main() {
 		log.Errorf("net listen failed. err:%s", err)
 		return
 	}
+	log.Info("listen success")
 
 	mock := new(MockHandler)
 	mock.Args = masterCfg.MockArgs
@@ -76,9 +80,14 @@ func main() {
 			log.Errorf("server newConn failed. err:%s", err)
 			return
 		}
+		log.Info("server newConn success")
 
 		go func() {
-			defer conn.Close()
+			defer func() {
+				if conn != nil {
+					conn.Close()
+				}
+			}()
 			for {
 				err := conn.HandleCommand()
 				if err != nil {

@@ -3,23 +3,23 @@
 package main
 
 import (
-	"bytes"
 	"os"
 	"path"
 	"sync"
 	"time"
 
-	"github.com/BurntSushi/toml"
+	"git.umlife.net/backend/mysql-bridge/global"
 	"github.com/siddontang/go-mysql/mysql"
 	"github.com/siddontang/go/ioutil2"
 	log "github.com/sirupsen/logrus"
+	"gopkg.in/yaml.v2"
 )
 
 type masterInfo struct {
 	sync.RWMutex
 
-	Name string `toml:"bin_name"`
-	Pos  uint32 `toml:"bin_pos"`
+	Name string `yaml:"bin_name"`
+	Pos  uint32 `yaml:"bin_pos"`
 
 	filePath     string
 	lastSaveTime time.Time
@@ -45,11 +45,9 @@ func loadMasterInfo(dataDir string) (*masterInfo, error) {
 	} else if os.IsNotExist(err) {
 		return &m, nil
 	}
-	defer func() {
-		_ = f.Close()
-	}()
+	_ = f.Close()
 
-	_, err = toml.DecodeReader(f, &m)
+	err = global.ParseYamlFile(m.filePath, &m)
 	if err != nil {
 		return nil, err
 	}
@@ -89,13 +87,12 @@ func (m *masterInfo) Save(pos mysql.Position) error {
 	}
 
 	m.lastSaveTime = n
-	var buf bytes.Buffer
-	e := toml.NewEncoder(&buf)
 
-	_ = e.Encode(m)
-
-	var err error
-	if err = ioutil2.WriteFileAtomic(m.filePath, buf.Bytes(), 0644); err != nil {
+	data, err := yaml.Marshal(m)
+	if err != nil {
+		return err
+	}
+	if err = ioutil2.WriteFileAtomic(m.filePath, data, 0644); err != nil {
 		log.Errorf("canal save master info to file %s err %v", m.filePath, err)
 	}
 

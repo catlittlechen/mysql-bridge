@@ -13,6 +13,8 @@ import (
 	"strings"
 	"time"
 
+	"git.umlife.net/backend/mysql-bridge/global"
+
 	"github.com/siddontang/go-mysql/mysql"
 	"github.com/siddontang/go-mysql/replication"
 	log "github.com/sirupsen/logrus"
@@ -31,11 +33,16 @@ func (h *MockHandler) GetValue(key string) (value interface{}) {
 		return
 	}
 
+	if strings.HasPrefix(key, "@@") {
+		key = key[2:]
+	}
+
 	var ok bool
 	value, ok = h.Args[key]
 	if !ok {
 		value = "NULL"
 	}
+	log.Debugf("key %s, value:%s", key, value)
 	return value
 }
 
@@ -52,15 +59,15 @@ func (h *MockHandler) UseDB(dbName string) error {
 func (h *MockHandler) HandleQuery(query string) (*mysql.Result, error) {
 	log.Debugf("query string: %s", query)
 
-	array := strings.Split(query, " ")
+	array := global.Split(query)
 	switch array[0] {
 	case "SELECT":
 		if len(array) < 1 {
-			return nil, nil
+			return nil, global.ErrorSQLSyntax
 		}
 
-		value := h.GetValue(array[1])
-		r, err := mysql.BuildSimpleResultset([]string{array[1]}, [][]interface{}{
+		value := h.GetValue(array[len(array)-1])
+		r, err := mysql.BuildSimpleResultset([]string{array[len(array)-1]}, [][]interface{}{
 			[]interface{}{value},
 		}, false)
 		if err != nil {

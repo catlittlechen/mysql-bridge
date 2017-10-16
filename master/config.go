@@ -3,12 +3,11 @@
 package main
 
 import (
-	"io/ioutil"
 	"time"
 
+	"git.umlife.net/backend/mysql-bridge/global"
 	"git.umlife.net/backend/mysql-bridge/kafka"
 	"github.com/siddontang/go-mysql/mysql"
-	"gopkg.in/yaml.v2"
 )
 
 var masterCfg Config
@@ -36,11 +35,8 @@ type MysqlConfig struct {
 
 func ParseConfigFile(filepath string) error {
 	masterCfg.MockArgs = make(map[string]interface{})
-	if confile, err := ioutil.ReadFile(filepath); nil == err {
-		if err = yaml.Unmarshal(confile, &masterCfg); nil != err {
-			return err
-		}
-	} else {
+	err := global.ParseYamlFile(filepath, &masterCfg)
+	if err != nil {
 		return err
 	}
 

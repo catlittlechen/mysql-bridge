@@ -18,11 +18,11 @@ redis:
 
 kafka:
     broker_list:
-        - 127.0.0.1:9091
+        - 172.16.5.225:9092
     flush_time: 1s
 
 table:
-    replication_topic: test
+    replication_topic: mysql_test
     replication:
         - mysql_slave_test@a
     prepar_topic: test2

@@ -3,15 +3,15 @@
 package kafka
 
 import (
-	"bytes"
 	"os"
 	"path"
 	"sync"
 	"time"
 
-	"github.com/BurntSushi/toml"
+	"git.umlife.net/backend/mysql-bridge/global"
 	"github.com/siddontang/go/ioutil2"
 	log "github.com/sirupsen/logrus"
+	"gopkg.in/yaml.v2"
 )
 
 type OffsetInfo struct {
@@ -34,6 +34,7 @@ func loadOffsetInfo(dataDir string, ticker time.Duration) (*OffsetInfo, error) {
 
 	m.filePath = path.Join(dataDir, "offset.info")
 	m.lastSaveTime = time.Now()
+	log.Debugf("filePath: %s lastSaveTime:%d", m.filePath, m.lastSaveTime)
 
 	if err := os.MkdirAll(dataDir, 0755); err != nil {
 		return nil, err
@@ -42,25 +43,21 @@ func loadOffsetInfo(dataDir string, ticker time.Duration) (*OffsetInfo, error) {
 	f, err := os.Open(m.filePath)
 	if err != nil && !os.IsNotExist(err) {
 		return nil, err
-	} else if os.IsNotExist(err) {
-		return &m, nil
 	}
-	defer func() {
+	if !os.IsNotExist(err) {
 		_ = f.Close()
-	}()
-
-	_, err = toml.DecodeReader(f, &m)
-	if err != nil {
-		return nil, err
+		err = global.ParseYamlFile(m.filePath, &m)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	go func() {
 		// Save binlog pos
+		log.Info("save binlog pos ticker:%d", ticker)
 		ticker := time.Tick(ticker)
 		for range ticker {
-			if time.Now().Unix()%60 == 0 {
-				log.Infof("%+v\n", m.PartitionOffset)
-			}
+			log.Infof("%+v\n", m.PartitionOffset)
 			err := m.Save()
 			if err != nil {
 				log.Errorf("OffsetInfo save failed. err:%s", err)
@@ -85,13 +82,12 @@ func (m *OffsetInfo) Save() error {
 	}
 
 	m.lastSaveTime = n
-	var buf bytes.Buffer
-	e := toml.NewEncoder(&buf)
+	data, err := yaml.Marshal(m)
+	if err != nil {
+		return err
+	}
 
-	_ = e.Encode(m)
-
-	var err error
-	if err = ioutil2.WriteFileAtomic(m.filePath, buf.Bytes(), 0644); err != nil {
+	if err = ioutil2.WriteFileAtomic(m.filePath, data, 0644); err != nil {
 		log.Errorf("canal save master info to file %s err %v", m.filePath, err)
 	}
 

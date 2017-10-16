@@ -7,4 +7,4 @@ paths:
     error: "./log/error.log"
     warn:  ""
     info:  "./log/info.log"
-    debug: ""
+    debug: "./log/debug.log"

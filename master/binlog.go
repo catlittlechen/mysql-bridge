@@ -18,7 +18,7 @@ import (
 
 func ChangePositionAndCheckSum(data []byte, pos uint32) []byte {
 	binary.LittleEndian.PutUint32(data[13:], pos)
-	binary.LittleEndian.PutUint32(data[len(data)-4:], crc32.ChecksumIEEE(data[0:pos]))
+	binary.LittleEndian.PutUint32(data[len(data)-4:], crc32.ChecksumIEEE(data[0:len(data)-4]))
 	return data
 }
 
