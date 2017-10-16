@@ -51,6 +51,7 @@ func InitRedis() error {
 	return nil
 }
 
+// TODO 没有容错性
 func GetSeqID(master bool) (uint64, error) {
 	conn := redisPool.Get()
 	defer func() {

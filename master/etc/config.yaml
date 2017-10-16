@@ -16,9 +16,9 @@ kafka:
     broker_list:
         - 172.16.5.225:9092
     timeout: 1s
-    topic: mysql_test
+    topic: mysql_test2
     offset_dir: ./data/offset
-    default_seq_id: 0
+    default_seq_id: 127
     ticker: 1s
     ring_len: 102400
 
