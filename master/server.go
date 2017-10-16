@@ -34,6 +34,15 @@ func main() {
 	}
 	defer kconsumer.Close()
 
+	// init binlog
+	go func() {
+		err := WriteBinlog()
+		if err != nil {
+			panic("write binlog failed. err:" + err.Error())
+		}
+		return
+	}()
+
 	l, err := net.Listen("tcp", masterCfg.Mysql.Host+":"+strconv.Itoa(int(masterCfg.Mysql.Port)))
 	if err != nil {
 		log.Errorf("net listen failed. err:%s", err)

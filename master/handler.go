@@ -5,8 +5,11 @@ import (
 	"encoding/binary"
 	"errors"
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
+	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -130,12 +133,35 @@ func (h *MockHandler) HandleDump(data []byte) error {
 	h.FileName = string(data[11:])
 	log.Debugf("dump data pos:[%d] filename:[%s]", h.Pos, h.FileName)
 
-	filename := filepath.Join(masterCfg.Mysql.BinLogDir, h.FileName)
+	// TODO
 	var err error
+	if h.FileName == "" {
+		var fileInfos []os.FileInfo
+		fileInfos, err = ioutil.ReadDir(masterCfg.Mysql.BinLogDir)
+		if err != nil {
+			return err
+		}
+
+		var useFileInfos []string
+		validBinLogFileName := regexp.MustCompile(`^binlog-[0-9]+.log$`)
+		for _, fi := range fileInfos {
+			if validBinLogFileName.MatchString(fi.Name()) {
+				useFileInfos = append(useFileInfos, fi.Name())
+			}
+		}
+		sort.Strings(useFileInfos)
+		h.FileName = useFileInfos[0]
+	}
+	if h.Pos == 0 {
+		h.Pos = 4
+	}
+
+	filename := filepath.Join(masterCfg.Mysql.BinLogDir, h.FileName)
 	h.RedoLog, err = os.Open(filename)
 	if err != nil {
 		return err
 	}
+
 	_, err = h.RedoLog.Seek(int64(h.Pos), 1)
 	if err != nil {
 		return err

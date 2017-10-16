@@ -2,6 +2,7 @@ package kafka
 
 import (
 	"encoding/json"
+	"qcserver/src/log"
 	"time"
 
 	"git.umlife.net/backend/mysql-bridge/global"
@@ -84,19 +85,32 @@ func NewKafkaConsumer(config KafkaConsumerConfig) (*KafkaConsumer, error) {
 	}
 
 	go func() {
+		exceptSeqID := client.batter
 		for {
 			client.now += 1
 			if client.now == client.cfg.RingLen {
 				client.now = 0
 			}
-			for client.ring[client.now] == nil {
+
+			exceptSeqID += 1
+			if exceptSeqID > global.MaxSeqID {
+				exceptSeqID = global.MinSeqID
+			}
+
+			for {
+				if client.ring[client.now] != nil {
+					if client.ring[client.now].BinLog.SeqID == exceptSeqID {
+						break
+					}
+					log.Errorf("ring bug!")
+				}
 				time.Sleep(time.Second)
 				continue
 			}
 			client.channel <- client.ring[client.now]
 			client.ring[client.now] = nil
 			if client.now == 0 {
-				client.batter += uint64(client.cfg.RingLen)
+				client.batter = (client.batter + uint64(client.cfg.RingLen)) % global.MaxSeqID
 			}
 		}
 	}()
@@ -118,27 +132,58 @@ func (k *KafkaConsumer) NewPartitionMessgae(pid int32, offset int64) (*Partition
 		for msg := range pm.consumer.Messages() {
 			binlog := new(global.BinLogData)
 			_ = json.Unmarshal(msg.Value, binlog)
+			bMsg := &ConsumerMessage{
+				Msg:    msg,
+				BinLog: binlog,
+			}
 			for {
-				if k.batter-uint64(k.cfg.RingLen-k.now) > binlog.SeqID {
-					break
-				}
-
-				if k.batter-uint64(k.cfg.RingLen-k.now) <= binlog.SeqID && binlog.SeqID < k.batter+uint64(k.now)-1 {
-					if k.batter > binlog.SeqID {
-						k.ring[k.cfg.RingLen-int(k.batter-binlog.SeqID)] = &ConsumerMessage{
-							Msg:    msg,
-							BinLog: binlog,
-						}
-					} else {
-						k.ring[binlog.SeqID-k.batter] = &ConsumerMessage{
-							Msg:    msg,
-							BinLog: binlog,
-						}
+				// deal with > maxSeqID
+				// if maxSeqID >> ringLen then that is right
+				// ignore when seqID in (now-9*ringLen, now)
+				if k.batter+uint64(k.now) > global.MaxSeqID {
+					if k.batter-uint64(k.cfg.RingLen-k.now) > binlog.SeqID && binlog.SeqID > k.batter-uint64(10*k.cfg.RingLen-k.now) {
+						break
 					}
-					break
-				}
 
-				time.Sleep(time.Second)
+					if binlog.SeqID >= k.batter {
+						k.ring[binlog.SeqID-k.batter] = bMsg
+					} else if binlog.SeqID < k.batter+uint64(k.now)-global.MaxSeqID {
+						k.ring[global.MaxSeqID-k.batter+binlog.SeqID] = bMsg
+					} else if binlog.SeqID >= k.batter-uint64(k.cfg.RingLen-k.now+1) {
+						k.ring[k.cfg.RingLen-int(k.batter-binlog.SeqID)] = bMsg
+					} else {
+						time.Sleep(time.Second)
+					}
+
+				} else if k.batter < uint64(k.cfg.RingLen-k.now+1) {
+					if k.batter+global.MaxSeqID-uint64(k.cfg.RingLen-k.now) > binlog.SeqID && binlog.SeqID > k.batter+global.MaxSeqID-uint64(10*k.cfg.RingLen-k.now) {
+						break
+					}
+
+					if k.batter > binlog.SeqID {
+						k.ring[k.cfg.RingLen-int(k.batter-binlog.SeqID)] = bMsg
+					} else if k.batter+uint64(k.now) > binlog.SeqID {
+						k.ring[binlog.SeqID-k.batter] = bMsg
+					} else if k.batter+global.MaxSeqID-uint64(k.cfg.RingLen-k.now) <= binlog.SeqID {
+						k.ring[k.cfg.RingLen-int(k.batter+global.MaxSeqID-binlog.SeqID)] = bMsg
+					} else {
+						time.Sleep(time.Second)
+					}
+
+				} else {
+					if k.batter-uint64(k.cfg.RingLen-k.now) > binlog.SeqID {
+						break
+					}
+
+					if binlog.SeqID < k.batter+uint64(k.now) {
+						if k.batter > binlog.SeqID {
+							k.ring[k.cfg.RingLen-int(k.batter-binlog.SeqID)] = bMsg
+						} else {
+							k.ring[binlog.SeqID-k.batter] = bMsg
+						}
+						break
+					}
+				}
 			}
 		}
 	}()
@@ -149,7 +194,6 @@ func (k *KafkaConsumer) Message() <-chan *ConsumerMessage {
 	return k.channel
 }
 
-// TODO
 func (k *KafkaConsumer) Callback(cm *ConsumerMessage) {
 	k.offsetInfo.SequenceID = cm.BinLog.SeqID
 	k.offsetInfo.PartitionOffset[cm.Msg.Partition] = cm.Msg.Offset

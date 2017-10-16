@@ -197,6 +197,7 @@ func CreateNewBinLogFile(filename string) (file *os.File, err error) {
 	}
 	data := NewFormatDescriptionEventData()
 	data = ChangePositionAndCheckSum(data, uint32(len(data)+4))
+	_, _ = file.Write([]byte{0, 0, 0, 0})
 	_, _ = file.Write(data)
 	return
 }
