@@ -93,7 +93,7 @@ func DescSeqID(master bool) error {
 
 	value, err := redis.Uint64(conn.Do("GET", key))
 	if err != nil {
-		return 0, err
+		return err
 	}
 
 	value--
@@ -103,8 +103,8 @@ func DescSeqID(master bool) error {
 
 	_, err = conn.Do("SET", key, value)
 	if err != nil {
-		return 0, err
+		return err
 	}
 
-	return value, nil
+	return nil
 }
