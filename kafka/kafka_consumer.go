@@ -64,11 +64,11 @@ func NewKafkaConsumer(config KafkaConsumerConfig) (*KafkaConsumer, error) {
 	log.Infof("kafka client get partitions list %+v success", client.partitonsList)
 
 	client.ring = make([]*ConsumerMessage, config.RingLen)
-	client.now = 0
+	client.now = 1
 	if client.offsetInfo.SequenceID == 0 {
-		client.batter = config.DefaultSeqID + uint64(config.RingLen)
+		client.batter = (config.DefaultSeqID + uint64(config.RingLen)) % global.MaxSeqID
 	} else {
-		client.batter = client.offsetInfo.SequenceID + uint64(config.RingLen)
+		client.batter = (client.offsetInfo.SequenceID + uint64(config.RingLen)) % global.MaxSeqID
 	}
 
 	client.partitionConsumerArray = make([]*PartitionMessage, len(client.partitonsList))
@@ -89,35 +89,38 @@ func NewKafkaConsumer(config KafkaConsumerConfig) (*KafkaConsumer, error) {
 	log.Infof("kafka client get all partitions success")
 
 	go func() {
-		exceptSeqID := client.batter - uint64(config.RingLen)
+		exceptSeqID := client.batter - uint64(config.RingLen) + 1
+		if client.batter < uint64(config.RingLen) {
+			exceptSeqID = client.batter + global.MaxSeqID - uint64(config.RingLen) + 1
+		}
 		for {
-			if client.closed {
-				break
-			}
-			client.now += 1
-			if client.now == client.cfg.RingLen {
-				client.now = 0
-			}
-
-			exceptSeqID += 1
-			if exceptSeqID > global.MaxSeqID {
-				exceptSeqID = global.MinSeqID
-			}
-
 			for {
+				if client.closed {
+					return
+				}
 				if client.ring[client.now] != nil {
 					if client.ring[client.now].BinLog.SeqID == exceptSeqID {
+						log.Infof("get data index:%d exceptSeqID:%d", client.now, exceptSeqID)
 						break
 					}
 					log.Errorf("ring bug! index:%d seqID:%d exceptSeqID:%d", client.now, client.ring[client.now].BinLog.SeqID, exceptSeqID)
 				}
+				log.Infof("waiting for data... index:%d exceptSeqID:%d", client.now, exceptSeqID)
 				time.Sleep(client.cfg.TimeSleep)
 				continue
 			}
 			client.channel <- client.ring[client.now]
 			client.ring[client.now] = nil
-			if client.now == 0 {
-				client.batter = (client.batter + uint64(client.cfg.RingLen)) % global.MaxSeqID
+
+			client.now++
+			if client.now == client.cfg.RingLen {
+				client.now = 0
+				client.batter = (client.batter + uint64(config.RingLen)) % global.MaxSeqID
+			}
+
+			exceptSeqID++
+			if exceptSeqID > global.MaxSeqID {
+				exceptSeqID = global.MinSeqID
 			}
 		}
 	}()
@@ -150,6 +153,7 @@ func (k *KafkaConsumer) NewPartitionMessgae(pid int32, offset int64) (*Partition
 				// deal with > maxSeqID
 				// if maxSeqID >> ringLen then that is right
 				// ignore when seqID in (now-9*ringLen, now)
+				log.Infof("batter %d now %d binlog:%d ringLen:%d min: %d max: %d", k.batter, k.now, binlog.SeqID, k.cfg.RingLen, global.MinSeqID, global.MaxSeqID)
 				if k.batter+uint64(k.now) > global.MaxSeqID {
 					if k.batter-uint64(k.cfg.RingLen-k.now) > binlog.SeqID && binlog.SeqID > k.batter-uint64(10*k.cfg.RingLen-k.now) {
 						break
@@ -171,6 +175,7 @@ func (k *KafkaConsumer) NewPartitionMessgae(pid int32, offset int64) (*Partition
 						time.Sleep(k.cfg.TimeSleep)
 					}
 
+					// batter 0 now 0 binlog:10000 ringLen:500 min: 1 max: 10000
 				} else if k.batter < uint64(k.cfg.RingLen-k.now+1) {
 					if k.batter+global.MaxSeqID-uint64(k.cfg.RingLen-k.now) > binlog.SeqID && binlog.SeqID > k.batter+global.MaxSeqID-uint64(10*k.cfg.RingLen-k.now) {
 						break
@@ -194,6 +199,9 @@ func (k *KafkaConsumer) NewPartitionMessgae(pid int32, offset int64) (*Partition
 
 				} else {
 					if k.batter-uint64(k.cfg.RingLen-k.now) > binlog.SeqID {
+						break
+					}
+					if k.batter-uint64(k.cfg.RingLen-k.now) < uint64(k.cfg.RingLen) && k.batter-uint64(10*k.cfg.RingLen-k.now)+global.MaxSeqID < binlog.SeqID {
 						break
 					}
 

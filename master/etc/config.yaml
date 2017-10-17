@@ -10,7 +10,8 @@ mysql:
     server_id: 18001
     server_version: 5.6.33-0ubuntu0.14.04.1-log (Ubuntu)
     binlog_dir: ./data/binlog
-    binlog_size: 104857600
+    #binlog_size: 10485760
+    binlog_size: 72000
 
 kafka:
     broker_list:
@@ -18,9 +19,9 @@ kafka:
     timeout: 1s
     topic: mysql_test3
     offset_dir: ./data/offset
-    default_seq_id: 1
+    default_seq_id: 0
     ticker: 1s
-    ring_len: 102400
+    ring_len: 500
     time_sleep: 10ms
 
 mockargs:

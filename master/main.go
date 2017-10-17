@@ -107,8 +107,8 @@ func main() {
 
 	<-sc
 
-	kconsumer.Close()
 	binLogWriter.Close()
+	kconsumer.Close()
 
 	return
 }

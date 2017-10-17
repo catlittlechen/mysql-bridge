@@ -217,15 +217,19 @@ func (b *BinLogWriter) RotateFile() (err error) {
 	stat, _ := b.file.Stat()
 	size := stat.Size()
 	if size > masterCfg.Mysql.BinLogSize {
-		nextFileName := "binlog-" + strconv.FormatInt(time.Now().Unix(), 10) + ".log"
-		b.file, err = b.CreateNewBinLogFile(nextFileName)
 
+		nextFileName := "binlog-" + strconv.FormatInt(time.Now().Unix(), 10) + ".log"
 		data := NewRotateEventData(nextFileName, true)
 		data = ChangePositionAndCheckSum(data, uint32(size)+uint32(len(data)))
 		_, _ = b.file.Write(data)
 
 		_ = b.file.Sync()
 		_ = b.file.Close()
+
+		b.file, err = b.CreateNewBinLogFile(nextFileName)
+		if err != nil {
+			return
+		}
 	}
 	return
 }
