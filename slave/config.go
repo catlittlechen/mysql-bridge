@@ -43,8 +43,8 @@ type TableConfig struct {
 	PreparTopic      string   `yaml:"prepar_topic"`
 	Prepar           []string `yaml:"prepar"`
 
-	RepMap map[string]map[string]bool
-	PreMap map[string]map[string]bool
+	RepMap map[string]map[string]bool `yaml:"-"`
+	PreMap map[string]map[string]bool `yaml:"-"`
 }
 
 func ParseConfigFile(filepath string) error {
@@ -71,7 +71,7 @@ func ParseConfigFile(filepath string) error {
 	for _, str := range slaveCfg.Table.Replication {
 		array := strings.Split(str, "@")
 		if len(array) != 2 {
-			return errors.New("the format of prepar shoud be database@table")
+			return errors.New("the format of replication shoud be database@table")
 		}
 		database = array[0]
 		table = array[1]

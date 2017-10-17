@@ -76,7 +76,7 @@ func (s *Syncer) Run() (err error) {
 			} else {
 				err = s.record([][]byte{event.RawData}, name, event.Header.LogPos, true)
 				if err != nil {
-					fmt.Println("syncer record failed. err:%s", err)
+					log.Errorf("syncer record failed. err: %s", err)
 					return
 				}
 			}
@@ -103,7 +103,7 @@ func (s *Syncer) Run() (err error) {
 				transaction = append(transaction, event.RawData)
 				err = s.record(transaction, name, event.Header.LogPos, true)
 				if err != nil {
-					fmt.Println("syncer record failed. err:%s", err)
+					log.Errorf("syncer record failed. err: %s", err)
 					return
 				}
 			}
@@ -112,7 +112,7 @@ func (s *Syncer) Run() (err error) {
 				preTransaction = append(preTransaction, event.RawData)
 				err = s.record(preTransaction, name, event.Header.LogPos, false)
 				if err != nil {
-					fmt.Println("syncer record failed. err:%s", err)
+					log.Errorf("syncer record failed. err:%s", err)
 					return
 				}
 			}
