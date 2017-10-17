@@ -79,3 +79,32 @@ func GetSeqID(master bool) (uint64, error) {
 
 	return value, nil
 }
+
+func DescSeqID(master bool) error {
+	conn := redisPool.Get()
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	key := redisMasterSeqKey
+	if !master {
+		key = redisPreparSeqKey
+	}
+
+	value, err := redis.Uint64(conn.Do("GET", key))
+	if err != nil {
+		return 0, err
+	}
+
+	value--
+	if value < global.MinSeqID {
+		value = global.MaxSeqID
+	}
+
+	_, err = conn.Do("SET", key, value)
+	if err != nil {
+		return 0, err
+	}
+
+	return value, nil
+}
