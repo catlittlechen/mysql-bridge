@@ -171,6 +171,10 @@ func (s *Syncer) record(dataList [][]byte, name string, pos uint32, master bool)
 	err = kproducer.Send(topic, b)
 	if err != nil {
 		log.Errorf("kafka producer send failed. err:%s", err)
+		err = DescSeqID(master)
+		if err != nil {
+			panic(err)
+		}
 		return
 	}
 
