@@ -83,11 +83,6 @@ func main() {
 		log.Info("server newConn success")
 
 		go func() {
-			defer func() {
-				if conn != nil {
-					conn.Close()
-				}
-			}()
 			for {
 				err := conn.HandleCommand()
 				if err != nil {

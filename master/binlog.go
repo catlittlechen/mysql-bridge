@@ -178,8 +178,10 @@ func WriteBinlog() (err error) {
 			size += uint32(len(binlog))
 			binlog = ChangePositionAndCheckSum(binlog, size)
 			copy(data[length:], binlog)
+			length += len(binlog)
 		}
 		_, _ = file.Write(data)
+		_ = file.Sync()
 		kconsumer.Callback(msg)
 
 		file, err = RotateFile(file)

@@ -158,8 +158,9 @@ func (h *MockHandler) HandleDump(data []byte) error {
 		}
 		sort.Strings(useFileInfos)
 		h.FileName = useFileInfos[0]
+		h.Pos = 4
 	}
-	if h.Pos == 0 {
+	if h.Pos < 4 {
 		h.Pos = 4
 	}
 
@@ -210,6 +211,7 @@ func (h *MockHandler) HandleGetData() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	log.Debugf("header:%+v\n", eventHeader)
 
 	needLen = int(eventHeader.EventSize) - replication.EventHeaderSize
 	data = make([]byte, eventHeader.EventSize)
