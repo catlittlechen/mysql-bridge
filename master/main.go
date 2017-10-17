@@ -5,7 +5,10 @@ import (
 	"flag"
 	"fmt"
 	"net"
+	"os"
+	"os/signal"
 	"strconv"
+	"syscall"
 
 	"git.umlife.net/backend/mysql-bridge/kafka"
 	logs "git.umlife.net/backend/mysql-bridge/log"
@@ -29,7 +32,7 @@ func main() {
 	fmt.Printf("config: %+v\n", masterCfg)
 
 	// init log
-	log.SetLevel(log.DebugLevel)
+	log.SetLevel(log.InfoLevel)
 	logs.ConfiglogrusrusWithFile(masterCfg.Logconf)
 
 	// init kafka
@@ -41,9 +44,10 @@ func main() {
 	log.Info("new kafka conusmer success")
 	defer kconsumer.Close()
 
+	binLogWriter := new(BinLogWriter)
 	// init binlog
 	go func() {
-		err := WriteBinlog()
+		err := binLogWriter.WriteBinlog()
 		if err != nil {
 			panic("write binlog failed. err:" + err.Error())
 		}
@@ -59,39 +63,52 @@ func main() {
 
 	mock := new(MockHandler)
 	mock.Args = masterCfg.MockArgs
-	/*
-		mock.Args["server_id"] = 18001
-		mock.Args["server_uuid"] = "2857b32d-9e9a-11e7-a268-94de80cb4372"
-		mock.Args["@@global.binlog_checksum"] = "NONE"
-		mock.Args["@@GLOBAL.GTID_MODE"] = "OFF"
-	*/
 
-	for {
-		c, err := l.Accept()
-		if err != nil {
-			log.Errorf("listen accept failed. err:%s", err)
-			return
-		}
-
-		// Create a connection with user root and an empty passowrd
-		// We only an empty handler to handle command too
-		conn, err := server.NewConn(c, masterCfg.Mysql.User, masterCfg.Mysql.Password, mock)
-		if err != nil {
-			log.Errorf("server newConn failed. err:%s", err)
-			return
-		}
-		log.Info("server newConn success")
-
-		go func() {
-			for {
-				err := conn.HandleCommand()
-				if err != nil {
-					log.Errorf("handlerCommand failed. err:%s", err)
-					return
-				}
+	go func() {
+		for {
+			c, err := l.Accept()
+			if err != nil {
+				log.Errorf("listen accept failed. err:%s", err)
+				return
 			}
-		}()
-	}
+
+			// Create a connection with user root and an empty passowrd
+			// We only an empty handler to handle command too
+			conn, err := server.NewConn(c, masterCfg.Mysql.User, masterCfg.Mysql.Password, mock)
+			if err != nil {
+				log.Errorf("server newConn failed. err:%s", err)
+				return
+			}
+			log.Info("server newConn success")
+
+			go func() {
+				for {
+					err := conn.HandleCommand()
+					if err != nil {
+						log.Errorf("handlerCommand failed. err:%s", err)
+						return
+					}
+				}
+			}()
+		}
+	}()
+
+	defer func() {
+		kconsumer.Close()
+		binLogWriter.Close()
+	}()
+
+	// Deal with signal
+	sc := make(chan os.Signal, 1)
+	signal.Notify(sc,
+		syscall.SIGINT,
+		syscall.SIGTERM,
+		syscall.SIGQUIT)
+
+	<-sc
+
+	kconsumer.Close()
+	binLogWriter.Close()
 
 	return
 }

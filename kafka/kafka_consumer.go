@@ -91,6 +91,9 @@ func NewKafkaConsumer(config KafkaConsumerConfig) (*KafkaConsumer, error) {
 	go func() {
 		exceptSeqID := client.batter - uint64(config.RingLen)
 		for {
+			if client.closed {
+				break
+			}
 			client.now += 1
 			if client.now == client.cfg.RingLen {
 				client.now = 0
@@ -106,9 +109,9 @@ func NewKafkaConsumer(config KafkaConsumerConfig) (*KafkaConsumer, error) {
 					if client.ring[client.now].BinLog.SeqID == exceptSeqID {
 						break
 					}
-					log.Errorf("ring bug! index:%d seqID:%d exceptSeqID:%s", client.now, client.ring[client.now].BinLog.SeqID, exceptSeqID)
+					log.Errorf("ring bug! index:%d seqID:%d exceptSeqID:%d", client.now, client.ring[client.now].BinLog.SeqID, exceptSeqID)
 				}
-				time.Sleep(time.Second)
+				time.Sleep(client.cfg.TimeSleep)
 				continue
 			}
 			client.channel <- client.ring[client.now]
@@ -134,6 +137,9 @@ func (k *KafkaConsumer) NewPartitionMessgae(pid int32, offset int64) (*Partition
 	}
 	go func() {
 		for msg := range pm.consumer.Messages() {
+			if k.closed {
+				break
+			}
 			binlog := new(global.BinLogData)
 			_ = json.Unmarshal(msg.Value, binlog)
 			bMsg := &ConsumerMessage{
@@ -162,7 +168,7 @@ func (k *KafkaConsumer) NewPartitionMessgae(pid int32, offset int64) (*Partition
 						log.Debugf("binlog msg: seqID:%d pos:%d", binlog.SeqID, k.cfg.RingLen-int(k.batter-binlog.SeqID))
 						break
 					} else {
-						time.Sleep(time.Second)
+						time.Sleep(k.cfg.TimeSleep)
 					}
 
 				} else if k.batter < uint64(k.cfg.RingLen-k.now+1) {
@@ -183,7 +189,7 @@ func (k *KafkaConsumer) NewPartitionMessgae(pid int32, offset int64) (*Partition
 						log.Debugf("binlog msg: seqID:%d pos:%d", binlog.SeqID, k.cfg.RingLen-int(k.batter+global.MaxSeqID-binlog.SeqID))
 						break
 					} else {
-						time.Sleep(time.Second)
+						time.Sleep(k.cfg.TimeSleep)
 					}
 
 				} else {
@@ -201,6 +207,7 @@ func (k *KafkaConsumer) NewPartitionMessgae(pid int32, offset int64) (*Partition
 						}
 						break
 					}
+					time.Sleep(k.cfg.TimeSleep)
 				}
 			}
 		}
@@ -220,10 +227,14 @@ func (k *KafkaConsumer) Callback(cm *ConsumerMessage) {
 
 // Close .
 func (k *KafkaConsumer) Close() {
+	if k.closed {
+		return
+	}
 	k.closed = true
 	for _, pc := range k.partitionConsumerArray {
 		_ = pc.consumer.Close()
 	}
 	_ = k.c.Close()
+	_ = k.offsetInfo.Save()
 	return
 }

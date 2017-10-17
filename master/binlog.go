@@ -16,7 +16,12 @@ import (
 	"github.com/siddontang/go-mysql/replication"
 )
 
-func ChangePositionAndCheckSum(data []byte, pos uint32) []byte {
+type BinLogWriter struct {
+	file   *os.File
+	closed bool
+}
+
+func (b *BinLogWriter) ChangePositionAndCheckSum(data []byte, pos uint32) []byte {
 	binary.LittleEndian.PutUint32(data[13:], pos)
 	binary.LittleEndian.PutUint32(data[len(data)-4:], crc32.ChecksumIEEE(data[0:len(data)-4]))
 	return data
@@ -24,7 +29,7 @@ func ChangePositionAndCheckSum(data []byte, pos uint32) []byte {
 
 // rotate close + open + fileDescription
 
-func NewRotateEventData(filename string, first bool) []byte {
+func (b *BinLogWriter) NewRotateEventData(filename string, first bool) []byte {
 	timeStamp := time.Now().Unix()
 	if !first {
 		timeStamp = 0
@@ -66,7 +71,7 @@ func NewRotateEventData(filename string, first bool) []byte {
 	return data
 }
 
-func NewFormatDescriptionEventData() []byte {
+func (b *BinLogWriter) NewFormatDescriptionEventData() []byte {
 
 	timeStamp := time.Now().Unix()
 	postHeaderLen := []byte{56, 13, 0, 8, 0, 18, 0, 4, 4, 4, 4, 18, 0, 0, 92, 0, 4, 26, 8, 0, 0, 0, 8, 8, 8, 2, 0, 0, 0, 10, 10, 10, 25, 25, 0}
@@ -125,7 +130,7 @@ func NewFormatDescriptionEventData() []byte {
 
 // translation BEGIN + **** + XID
 // rewrite binlog
-func WriteBinlog() (err error) {
+func (b *BinLogWriter) WriteBinlog() (err error) {
 
 	err = os.MkdirAll(masterCfg.Mysql.BinLogDir, 0755)
 	if err != nil {
@@ -146,26 +151,28 @@ func WriteBinlog() (err error) {
 		}
 	}
 
-	var file *os.File
 	lastFileName := "binlog-" + strconv.FormatInt(time.Now().Unix(), 10) + ".log"
 	if len(useFileInfos) != 0 {
 		sort.Strings(useFileInfos)
 		lastFileName = useFileInfos[len(useFileInfos)-1]
-		file, err = os.OpenFile(filepath.Join(masterCfg.Mysql.BinLogDir, lastFileName), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0643)
+		b.file, err = os.OpenFile(filepath.Join(masterCfg.Mysql.BinLogDir, lastFileName), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0643)
 	} else {
-		file, err = CreateNewBinLogFile(lastFileName)
+		b.file, err = b.CreateNewBinLogFile(lastFileName)
 	}
 	if err != nil {
 		return
 	}
 
-	file, err = RotateFile(file)
+	err = b.RotateFile()
 	if err != nil {
 		return
 	}
 
 	for msg := range kconsumer.Message() {
-		stat, _ := file.Stat()
+		if msg == nil || b.closed {
+			break
+		}
+		stat, _ := b.file.Stat()
 		size := uint32(stat.Size())
 		binLogList := msg.BinLog.Data
 		length := 0
@@ -176,53 +183,63 @@ func WriteBinlog() (err error) {
 		length = 0
 		for _, binlog := range binLogList {
 			size += uint32(len(binlog))
-			binlog = ChangePositionAndCheckSum(binlog, size)
+			binlog = b.ChangePositionAndCheckSum(binlog, size)
 			copy(data[length:], binlog)
 			length += len(binlog)
 		}
-		_, _ = file.Write(data)
-		_ = file.Sync()
+		_, _ = b.file.Write(data)
+		_ = b.file.Sync()
 		kconsumer.Callback(msg)
 
-		file, err = RotateFile(file)
+		err = b.RotateFile()
 		if err != nil {
 			return err
 		}
 	}
+
 	return
 }
 
-func CreateNewBinLogFile(filename string) (file *os.File, err error) {
+func (b *BinLogWriter) CreateNewBinLogFile(filename string) (file *os.File, err error) {
 	file, err = os.OpenFile(filepath.Join(masterCfg.Mysql.BinLogDir, filename), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0642)
 	if err != nil {
 		return
 	}
-	data := NewFormatDescriptionEventData()
-	data = ChangePositionAndCheckSum(data, uint32(len(data)+4))
+	data := b.NewFormatDescriptionEventData()
+	data = b.ChangePositionAndCheckSum(data, uint32(len(data)+4))
 	_, _ = file.Write([]byte{0, 0, 0, 0})
 	_, _ = file.Write(data)
 	return
 }
 
-func RotateFile(file *os.File) (nextFile *os.File, err error) {
-	stat, _ := file.Stat()
+func (b *BinLogWriter) RotateFile() (err error) {
+	stat, _ := b.file.Stat()
 	size := stat.Size()
 	if size > masterCfg.Mysql.BinLogSize {
 		nextFileName := "binlog-" + strconv.FormatInt(time.Now().Unix(), 10) + ".log"
-		nextFile, err = CreateNewBinLogFile(nextFileName)
+		b.file, err = b.CreateNewBinLogFile(nextFileName)
 
-		data := NewRotateEventData(nextFileName, true)
-		data = ChangePositionAndCheckSum(data, uint32(size)+uint32(len(data)))
-		_, _ = file.Write(data)
+		data := b.NewRotateEventData(nextFileName, true)
+		data = b.ChangePositionAndCheckSum(data, uint32(size)+uint32(len(data)))
+		_, _ = b.file.Write(data)
 
-		data = NewRotateEventData(nextFileName, false)
-		data = ChangePositionAndCheckSum(data, 0)
-		_, _ = file.Write(data)
+		data = b.NewRotateEventData(nextFileName, false)
+		data = b.ChangePositionAndCheckSum(data, 0)
+		_, _ = b.file.Write(data)
 
-		_ = file.Close()
+		_ = b.file.Close()
+	}
+	return
+}
 
-	} else {
-		nextFile = file
+func (b *BinLogWriter) Close() {
+	if b.closed {
+		return
+	}
+	b.closed = true
+	if b.file != nil {
+		_ = b.file.Sync()
+		_ = b.file.Close()
 	}
 	return
 }

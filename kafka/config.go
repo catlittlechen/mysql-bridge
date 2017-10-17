@@ -21,4 +21,5 @@ type KafkaConsumerConfig struct {
 	DefaultSeqID uint64        `yaml:"default_seq_id"`
 	Ticker       time.Duration `yaml:"ticker"`
 	RingLen      int           `yaml:"ring_len"`
+	TimeSleep    time.Duration `yaml:"time_sleep"`
 }

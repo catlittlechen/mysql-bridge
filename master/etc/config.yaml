@@ -21,6 +21,7 @@ kafka:
     default_seq_id: 127
     ticker: 1s
     ring_len: 102400
+    time_sleep: 10ms
 
 mockargs:
     server_id: 18001
