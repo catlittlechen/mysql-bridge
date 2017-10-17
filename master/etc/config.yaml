@@ -16,9 +16,9 @@ kafka:
     broker_list:
         - 172.16.5.225:9092
     timeout: 1s
-    topic: mysql_test2
+    topic: mysql_test3
     offset_dir: ./data/offset
-    default_seq_id: 127
+    default_seq_id: 1
     ticker: 1s
     ring_len: 102400
     time_sleep: 10ms
@@ -26,5 +26,5 @@ kafka:
 mockargs:
     server_id: 18001
     server_uuid: 2857b32d-9e9a-11e7-a268-94de80cb4372
-    global.binlog_checksum: NONE
+    global.binlog_checksum: CRC32
     GLOBAL.GTID_MODE: "OFF"

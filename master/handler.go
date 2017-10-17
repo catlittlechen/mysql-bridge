@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"git.umlife.net/backend/mysql-bridge/global"
-
 	"github.com/siddontang/go-mysql/mysql"
 	"github.com/siddontang/go-mysql/replication"
 	log "github.com/sirupsen/logrus"
@@ -23,8 +22,11 @@ import (
 type MockHandler struct {
 	Pos      uint32
 	FileName string
-	RedoLog  *os.File
-	Args     map[string]interface{}
+
+	RedoLog *os.File
+	NewFile bool
+
+	Args map[string]interface{}
 }
 
 func (h *MockHandler) GetValue(key string) (value interface{}) {
@@ -159,9 +161,11 @@ func (h *MockHandler) HandleDump(data []byte) error {
 		sort.Strings(useFileInfos)
 		h.FileName = useFileInfos[0]
 		h.Pos = 4
+		h.NewFile = true
 	}
-	if h.Pos < 4 {
+	if h.Pos <= 4 {
 		h.Pos = 4
+		h.NewFile = true
 	}
 
 	filename := filepath.Join(masterCfg.Mysql.BinLogDir, h.FileName)
@@ -187,6 +191,15 @@ func (h *MockHandler) HandleGetData() ([]byte, error) {
 		n           int
 		err         error
 	)
+
+	if h.NewFile {
+		log.Infof("new file[%s] has been read", h.RedoLog.Name())
+		data := NewRotateEventData(h.RedoLog.Name(), false)
+		data = ChangePositionAndCheckSum(data, 0)
+		h.NewFile = false
+		log.Debugf("data: %+v", data)
+		return data, nil
+	}
 
 	// Header
 	hold = make([]byte, replication.EventHeaderSize)

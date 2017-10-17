@@ -21,7 +21,7 @@ type BinLogWriter struct {
 	closed bool
 }
 
-func (b *BinLogWriter) ChangePositionAndCheckSum(data []byte, pos uint32) []byte {
+func ChangePositionAndCheckSum(data []byte, pos uint32) []byte {
 	binary.LittleEndian.PutUint32(data[13:], pos)
 	binary.LittleEndian.PutUint32(data[len(data)-4:], crc32.ChecksumIEEE(data[0:len(data)-4]))
 	return data
@@ -29,7 +29,8 @@ func (b *BinLogWriter) ChangePositionAndCheckSum(data []byte, pos uint32) []byte
 
 // rotate close + open + fileDescription
 
-func (b *BinLogWriter) NewRotateEventData(filename string, first bool) []byte {
+func NewRotateEventData(filename string, first bool) []byte {
+	_, filename = filepath.Split(filename)
 	timeStamp := time.Now().Unix()
 	if !first {
 		timeStamp = 0
@@ -51,7 +52,7 @@ func (b *BinLogWriter) NewRotateEventData(filename string, first bool) []byte {
 	pos += 4
 
 	// EventSize
-	binary.LittleEndian.PutUint32(data[pos:], uint32(32+len(filename)))
+	binary.LittleEndian.PutUint32(data[pos:], uint32(31+len(filename)))
 	pos += 4
 
 	// Log Position
@@ -183,7 +184,7 @@ func (b *BinLogWriter) WriteBinlog() (err error) {
 		length = 0
 		for _, binlog := range binLogList {
 			size += uint32(len(binlog))
-			binlog = b.ChangePositionAndCheckSum(binlog, size)
+			binlog = ChangePositionAndCheckSum(binlog, size)
 			copy(data[length:], binlog)
 			length += len(binlog)
 		}
@@ -206,7 +207,7 @@ func (b *BinLogWriter) CreateNewBinLogFile(filename string) (file *os.File, err 
 		return
 	}
 	data := b.NewFormatDescriptionEventData()
-	data = b.ChangePositionAndCheckSum(data, uint32(len(data)+4))
+	data = ChangePositionAndCheckSum(data, uint32(len(data)+4))
 	_, _ = file.Write([]byte{0, 0, 0, 0})
 	_, _ = file.Write(data)
 	return
@@ -219,14 +220,11 @@ func (b *BinLogWriter) RotateFile() (err error) {
 		nextFileName := "binlog-" + strconv.FormatInt(time.Now().Unix(), 10) + ".log"
 		b.file, err = b.CreateNewBinLogFile(nextFileName)
 
-		data := b.NewRotateEventData(nextFileName, true)
-		data = b.ChangePositionAndCheckSum(data, uint32(size)+uint32(len(data)))
+		data := NewRotateEventData(nextFileName, true)
+		data = ChangePositionAndCheckSum(data, uint32(size)+uint32(len(data)))
 		_, _ = b.file.Write(data)
 
-		data = b.NewRotateEventData(nextFileName, false)
-		data = b.ChangePositionAndCheckSum(data, 0)
-		_, _ = b.file.Write(data)
-
+		_ = b.file.Sync()
 		_ = b.file.Close()
 	}
 	return

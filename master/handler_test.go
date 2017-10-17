@@ -12,6 +12,7 @@ import (
 func TestHandler(t *testing.T) {
 	parse := replication.NewBinlogParser()
 	mock := new(MockHandler)
+	mock.NewFile = true
 	var err error
 	mock.RedoLog, err = os.Open("./test/binlog-1508150709.log")
 	if err != nil {
@@ -31,6 +32,7 @@ func TestHandler(t *testing.T) {
 			t.Fatal(err)
 			return
 		}
+		t.Logf("data: %+v\n", data)
 		e, err := parse.Parse(data)
 		if err != nil {
 			t.Fatal(err)

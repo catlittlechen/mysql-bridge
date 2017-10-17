@@ -57,7 +57,9 @@ func loadOffsetInfo(dataDir string, ticker time.Duration) (*OffsetInfo, error) {
 		log.Info("save binlog pos ticker:%d", ticker)
 		ticker := time.Tick(ticker)
 		for range ticker {
-			log.Infof("%+v\n", m.PartitionOffset)
+			if time.Now().Unix()%60 == 0 {
+				log.Infof("offset info %+v\n", m.PartitionOffset)
+			}
 			err := m.Save()
 			if err != nil {
 				log.Errorf("OffsetInfo save failed. err:%s", err)
