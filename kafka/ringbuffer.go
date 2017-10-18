@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"git.umlife.net/backend/mysql-bridge/global"
-	log "qiniupkg.com/x/log.v7"
+	log "github.com/sirupsen/logrus"
 )
 
 type RingBuffer struct {
