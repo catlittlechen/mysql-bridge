@@ -22,7 +22,7 @@ kafka:
     default_seq_id: 0
     ticker: 1s
     ring_len: 500
-    time_sleep: 10ms
+    time_sleep: 100ms
 
 mockargs:
     server_id: 18001

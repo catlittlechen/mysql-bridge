@@ -43,35 +43,38 @@ func NewRingBuffer(length int, seqID uint64, sleep time.Duration) *RingBuffer {
 
 func (r *RingBuffer) Run() {
 	for {
-		if r.closed {
-			return
-		}
-		if r.buffer[r.now] != nil {
-			if r.buffer[r.now].BinLog.SeqID == r.seqID {
-				log.Infof("get data index:%d expectSeqID:%d", r.now, r.seqID)
-				break
+		for {
+			if r.closed {
+				return
 			}
-			log.Errorf("ring bug! index:%d seqID:%d expectSeqID:%d", r.now,
-				r.buffer[r.now].BinLog.SeqID, r.seqID)
+			if r.buffer[r.now] != nil {
+				if r.buffer[r.now].BinLog.SeqID == r.seqID {
+					log.Infof("get data index:%d expectSeqID:%d", r.now, r.seqID)
+					break
+				}
+				log.Errorf("ring bug! index:%d seqID:%d expectSeqID:%d", r.now,
+					r.buffer[r.now].BinLog.SeqID, r.seqID)
+			}
+			log.Infof("waiting for data... index:%d expectSeqID:%d", r.now, r.seqID)
+			time.Sleep(r.sleep)
 		}
-		log.Infof("waiting for data... index:%d expectSeqID:%d", r.now, r.seqID)
-	}
 
-	r.channel <- r.buffer[r.now]
-	r.buffer[r.now] = nil
+		r.channel <- r.buffer[r.now]
+		r.buffer[r.now] = nil
 
-	r.now++
-	if r.now == r.length {
-		r.now = 0
-		r.batter = r.batter + uint64(r.length)
-		if r.batter > global.MaxSeqID {
-			r.batter = r.batter - global.MaxSeqID + global.MinSeqID - 1
+		r.now++
+		if r.now == r.length {
+			r.now = 0
+			r.batter = r.batter + uint64(r.length)
+			if r.batter > global.MaxSeqID {
+				r.batter = r.batter - global.MaxSeqID + global.MinSeqID - 1
+			}
 		}
-	}
 
-	r.seqID++
-	if r.seqID > global.MaxSeqID {
-		r.seqID = global.MinSeqID
+		r.seqID++
+		if r.seqID > global.MaxSeqID {
+			r.seqID = global.MinSeqID
+		}
 	}
 	return
 }
