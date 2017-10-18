@@ -121,8 +121,7 @@ func (k *KafkaConsumer) Message() <-chan *ConsumerMessage {
 }
 
 func (k *KafkaConsumer) Callback(cm *ConsumerMessage) {
-	k.offsetInfo.SequenceID = cm.BinLog.SeqID
-	k.offsetInfo.PartitionOffset[cm.Msg.Partition] = cm.Msg.Offset
+	k.offsetInfo.Set(cm.BinLog.SeqID, cm.Msg.Partition, cm.Msg.Offset)
 	return
 }
 

@@ -15,13 +15,13 @@ import (
 )
 
 type OffsetInfo struct {
-	sync.RWMutex
+	sync.Mutex `yaml:"-"`
 
-	PartitionOffset map[int32]int64 `toml:"PartitionOffset"`
-	SequenceID      uint64          `toml:"sequenceid"`
+	PartitionOffset map[int32]int64 `yaml:"PartitionOffset"`
+	SequenceID      uint64          `yaml:"sequenceid"`
 
-	filePath     string
-	lastSaveTime time.Time
+	filePath     string    `yaml:"-"`
+	lastSaveTime time.Time `yaml:"-"`
 }
 
 func loadOffsetInfo(dataDir string, ticker time.Duration) (*OffsetInfo, error) {
@@ -94,6 +94,15 @@ func (m *OffsetInfo) Save() error {
 	}
 
 	return err
+}
+
+func (m *OffsetInfo) Set(seqID uint64, pid int32, offset int64) {
+	m.Lock()
+	defer m.Unlock()
+
+	m.SequenceID = seqID
+	m.PartitionOffset[pid] = offset
+	return
 }
 
 func (m *OffsetInfo) Close() error {
