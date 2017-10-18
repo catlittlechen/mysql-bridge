@@ -15,7 +15,7 @@ type KafkaProducer struct {
 // NewKafkaProducer .
 func NewKafkaProducer(config KafkaProducerConfig) (*KafkaProducer, error) {
 	cfg := sarama.NewConfig()
-	cfg.Producer.Compression = sarama.CompressionSnappy
+	cfg.Producer.Compression = sarama.CompressionGZIP
 	cfg.Producer.RequiredAcks = sarama.WaitForAll
 	cfg.Producer.Return.Successes = true
 	cfg.Producer.Return.Errors = true
