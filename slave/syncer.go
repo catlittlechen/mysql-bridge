@@ -84,14 +84,19 @@ func (s *Syncer) Run() (err error) {
 			shouldWrite = false
 			te := event.Event.(*replication.TableMapEvent)
 			if _, ok := slaveCfg.Table.RepMap[strings.ToLower(string(te.Schema))]; ok {
-				if slaveCfg.Table.RepMap[strings.ToLower(string(te.Schema))][strings.ToLower(string(te.Table))] {
-					transaction = append(transaction, event.RawData)
-					shouldWrite = true
+				table := strings.ToLower(string(te.Table))
+				for _, re := range slaveCfg.Table.RepMap[strings.ToLower(string(te.Schema))] {
+					if re.MatchString(table) {
+						transaction = append(transaction, event.RawData)
+						shouldWrite = true
+						break
+					}
 				}
 			}
 			if _, ok := slaveCfg.Table.PreMap[strings.ToLower(string(te.Schema))]; ok {
-				if slaveCfg.Table.PreMap[strings.ToLower(string(te.Schema))][strings.ToLower(string(te.Table))] {
-					if preTransaction == nil {
+				table := strings.ToLower(string(te.Table))
+				for _, re := range slaveCfg.Table.PreMap[strings.ToLower(string(te.Schema))] {
+					if re.MatchString(table) {
 						preTransaction = append(preTransaction, transaction[0], event.RawData)
 						shouldWritePre = true
 					}

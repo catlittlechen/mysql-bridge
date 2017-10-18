@@ -22,9 +22,9 @@ kafka:
     flush_time: 1s
 
 table:
-    replication_topic: mysql_test3
+    replication_topic: mysql_test5
     replication:
-        - mysql_slave_test@a
+        - mysql_slave_test@a*
     prepar_topic: test2
     prepar:
-        - mysql_slave_test@b
+        - mysql_slave_test@b*

@@ -3,6 +3,7 @@ package main
 
 import (
 	"errors"
+	"regexp"
 	"strings"
 	"time"
 
@@ -43,8 +44,8 @@ type TableConfig struct {
 	PreparTopic      string   `yaml:"prepar_topic"`
 	Prepar           []string `yaml:"prepar"`
 
-	RepMap map[string]map[string]bool `yaml:"-"`
-	PreMap map[string]map[string]bool `yaml:"-"`
+	RepMap map[string][]*regexp.Regexp `yaml:"-"`
+	PreMap map[string][]*regexp.Regexp `yaml:"-"`
 }
 
 func ParseConfigFile(filepath string) error {
@@ -53,8 +54,8 @@ func ParseConfigFile(filepath string) error {
 		return err
 	}
 
-	slaveCfg.Table.PreMap = make(map[string]map[string]bool)
-	slaveCfg.Table.RepMap = make(map[string]map[string]bool)
+	slaveCfg.Table.PreMap = make(map[string][]*regexp.Regexp)
+	slaveCfg.Table.RepMap = make(map[string][]*regexp.Regexp)
 	var database, table string
 	for _, str := range slaveCfg.Table.Prepar {
 		array := strings.Split(str, "@")
@@ -64,9 +65,9 @@ func ParseConfigFile(filepath string) error {
 		database = array[0]
 		table = array[1]
 		if _, ok := slaveCfg.Table.PreMap[database]; !ok {
-			slaveCfg.Table.PreMap[database] = make(map[string]bool)
+			slaveCfg.Table.PreMap[database] = make([]*regexp.Regexp, 0)
 		}
-		slaveCfg.Table.PreMap[database][table] = true
+		slaveCfg.Table.PreMap[database] = append(slaveCfg.Table.PreMap[database], regexp.MustCompile(table))
 	}
 	for _, str := range slaveCfg.Table.Replication {
 		array := strings.Split(str, "@")
@@ -76,9 +77,9 @@ func ParseConfigFile(filepath string) error {
 		database = array[0]
 		table = array[1]
 		if _, ok := slaveCfg.Table.RepMap[database]; !ok {
-			slaveCfg.Table.RepMap[database] = make(map[string]bool)
+			slaveCfg.Table.RepMap[database] = make([]*regexp.Regexp, 0)
 		}
-		slaveCfg.Table.RepMap[database][table] = true
+		slaveCfg.Table.RepMap[database] = append(slaveCfg.Table.RepMap[database], regexp.MustCompile(table))
 	}
 
 	return nil
