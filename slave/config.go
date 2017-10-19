@@ -41,6 +41,7 @@ type RedisConfig struct {
 type TableConfig struct {
 	ReplicationTopic string   `yaml:"replication_topic"`
 	Replication      []string `yaml:"replication"`
+	MaxSize          int      `yaml:"max_size"`
 
 	RepMap map[string][]*regexp.Regexp `yaml:"-"`
 }

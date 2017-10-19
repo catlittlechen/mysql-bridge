@@ -164,11 +164,7 @@ func (b *BinLogWriter) WriteBinlog() (err error) {
 		return
 	}
 
-	err = b.RotateFile()
-	if err != nil {
-		return
-	}
-
+	var header *replication.EventHeader
 	for msg := range kconsumer.Message() {
 		if msg == nil || b.closed {
 			break
@@ -192,10 +188,18 @@ func (b *BinLogWriter) WriteBinlog() (err error) {
 		_ = b.file.Sync()
 		kconsumer.Callback(msg)
 
-		err = b.RotateFile()
+		header = new(replication.EventHeader)
+		err = header.Decode(binLogList[len(binLogList)-1][:19])
 		if err != nil {
 			return err
 		}
+		if header.EventType == replication.XID_EVENT {
+			err = b.RotateFile()
+			if err != nil {
+				return err
+			}
+		}
+
 	}
 
 	return

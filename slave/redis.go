@@ -43,7 +43,6 @@ var redisPool *redis.Pool
 
 const (
 	redisMasterSeqKey = "master_binlog_seqid"
-	redisPreparSeqKey = "prepar_binlog_seqid"
 )
 
 func InitRedis() error {
@@ -52,16 +51,13 @@ func InitRedis() error {
 }
 
 // TODO 没有容错性
-func GetSeqID(master bool) (uint64, error) {
+func GetSeqID() (uint64, error) {
 	conn := redisPool.Get()
 	defer func() {
 		_ = conn.Close()
 	}()
 
 	key := redisMasterSeqKey
-	if !master {
-		key = redisPreparSeqKey
-	}
 
 	value, err := redis.Uint64(conn.Do("INCRBY", key, 1))
 	if err != nil {
@@ -80,16 +76,13 @@ func GetSeqID(master bool) (uint64, error) {
 	return value, nil
 }
 
-func DescSeqID(master bool) error {
+func DescSeqID() error {
 	conn := redisPool.Get()
 	defer func() {
 		_ = conn.Close()
 	}()
 
 	key := redisMasterSeqKey
-	if !master {
-		key = redisPreparSeqKey
-	}
 
 	value, err := redis.Uint64(conn.Do("GET", key))
 	if err != nil {

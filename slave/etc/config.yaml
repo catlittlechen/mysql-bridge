@@ -22,6 +22,7 @@ kafka:
     flush_time: 1s
 
 table:
-    replication_topic: mysql_test5
+    replication_topic: mysql_test7
     replication:
         - mysql_slave_test@a*
+    max_size: 65536
