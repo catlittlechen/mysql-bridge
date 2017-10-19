@@ -4,8 +4,7 @@ package global
 import "errors"
 
 const (
-	// MaxSeqID = 9000000000000000000
-	MaxSeqID = 10000
+	MaxSeqID = 1000000000
 	MinSeqID = 1
 )
 
