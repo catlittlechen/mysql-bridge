@@ -41,11 +41,8 @@ type RedisConfig struct {
 type TableConfig struct {
 	ReplicationTopic string   `yaml:"replication_topic"`
 	Replication      []string `yaml:"replication"`
-	PreparTopic      string   `yaml:"prepar_topic"`
-	Prepar           []string `yaml:"prepar"`
 
 	RepMap map[string][]*regexp.Regexp `yaml:"-"`
-	PreMap map[string][]*regexp.Regexp `yaml:"-"`
 }
 
 func ParseConfigFile(filepath string) error {
@@ -54,21 +51,8 @@ func ParseConfigFile(filepath string) error {
 		return err
 	}
 
-	slaveCfg.Table.PreMap = make(map[string][]*regexp.Regexp)
 	slaveCfg.Table.RepMap = make(map[string][]*regexp.Regexp)
 	var database, table string
-	for _, str := range slaveCfg.Table.Prepar {
-		array := strings.Split(str, "@")
-		if len(array) != 2 {
-			return errors.New("the format of prepar shoud be database@table")
-		}
-		database = array[0]
-		table = array[1]
-		if _, ok := slaveCfg.Table.PreMap[database]; !ok {
-			slaveCfg.Table.PreMap[database] = make([]*regexp.Regexp, 0)
-		}
-		slaveCfg.Table.PreMap[database] = append(slaveCfg.Table.PreMap[database], regexp.MustCompile(table))
-	}
 	for _, str := range slaveCfg.Table.Replication {
 		array := strings.Split(str, "@")
 		if len(array) != 2 {

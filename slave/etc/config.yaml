@@ -25,6 +25,3 @@ table:
     replication_topic: mysql_test5
     replication:
         - mysql_slave_test@a*
-    prepar_topic: test2
-    prepar:
-        - mysql_slave_test@b*

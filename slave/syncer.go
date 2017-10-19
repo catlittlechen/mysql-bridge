@@ -51,9 +51,6 @@ func (s *Syncer) Run() (err error) {
 		transaction [][]byte
 		shouldWrite bool
 
-		preTransaction [][]byte
-		shouldWritePre bool
-
 		// master binlog info
 		name = s.info.Name
 	)
@@ -73,7 +70,7 @@ func (s *Syncer) Run() (err error) {
 			qe := event.Event.(*replication.QueryEvent)
 			if strings.EqualFold(strings.ToUpper(string(qe.Query)), "BEGIN") || transaction != nil {
 				transaction = append(transaction, event.RawData)
-			} else {
+			} else if _, ok := slaveCfg.Table.RepMap[strings.ToLower(string(qe.Schema))]; ok {
 				err = s.record([][]byte{event.RawData}, name, event.Header.LogPos, true)
 				if err != nil {
 					log.Errorf("syncer record failed. err: %s", err)
@@ -93,15 +90,6 @@ func (s *Syncer) Run() (err error) {
 					}
 				}
 			}
-			if _, ok := slaveCfg.Table.PreMap[strings.ToLower(string(te.Schema))]; ok {
-				table := strings.ToLower(string(te.Table))
-				for _, re := range slaveCfg.Table.PreMap[strings.ToLower(string(te.Schema))] {
-					if re.MatchString(table) {
-						preTransaction = append(preTransaction, transaction[0], event.RawData)
-						shouldWritePre = true
-					}
-				}
-			}
 		case replication.XID_EVENT:
 			// deal with commit, pop kafka
 			if transaction != nil && len(transaction) != 1 {
@@ -113,18 +101,7 @@ func (s *Syncer) Run() (err error) {
 				}
 			}
 
-			if preTransaction != nil && len(preTransaction) != 1 {
-				preTransaction = append(preTransaction, event.RawData)
-				err = s.record(preTransaction, name, event.Header.LogPos, false)
-				if err != nil {
-					log.Errorf("syncer record failed. err:%s", err)
-					return
-				}
-			}
-
 			transaction = nil
-			shouldWrite = false
-			preTransaction = nil
 			shouldWrite = false
 
 		case replication.ROTATE_EVENT:
@@ -132,7 +109,7 @@ func (s *Syncer) Run() (err error) {
 		case replication.FORMAT_DESCRIPTION_EVENT:
 			// ignore
 		default:
-			if transaction == nil && preTransaction == nil {
+			if transaction == nil {
 				err = s.record(transaction, name, event.Header.LogPos, true)
 				if err != nil {
 					fmt.Println("syncer record failed. err:%s", err)
@@ -140,8 +117,6 @@ func (s *Syncer) Run() (err error) {
 				}
 			} else if shouldWrite {
 				transaction = append(transaction, event.RawData)
-			} else if shouldWritePre {
-				preTransaction = append(preTransaction, event.RawData)
 			}
 		}
 
@@ -169,9 +144,6 @@ func (s *Syncer) record(dataList [][]byte, name string, pos uint32, master bool)
 	}
 
 	topic := slaveCfg.Table.ReplicationTopic
-	if !master {
-		topic = slaveCfg.Table.PreparTopic
-	}
 
 	err = kproducer.Send(topic, b)
 	if err != nil {
