@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"git.umlife.net/backend/mysql-bridge/global"
+	"github.com/siddontang/go-mysql/mysql"
 	"github.com/siddontang/go-mysql/replication"
 	log "github.com/sirupsen/logrus"
 )
@@ -27,6 +28,7 @@ func NewSyncer(info *masterInfo) *Syncer {
 		Port:     slaveCfg.Mysql.Port,
 		User:     slaveCfg.Mysql.User,
 		Password: slaveCfg.Mysql.Password,
+		Charset:  mysql.DEFAULT_CHARSET,
 	}
 
 	return &Syncer{
@@ -41,7 +43,7 @@ func (s *Syncer) Run() (err error) {
 	var streamer *replication.BinlogStreamer
 	streamer, err = s.syncer.StartSync(s.info.Position())
 	if err != nil {
-		log.Errorf("syner start failed. err:%s", err)
+		log.Errorf("syncer start failed. err:%s", err)
 		return
 	}
 

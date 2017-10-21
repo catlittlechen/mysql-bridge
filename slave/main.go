@@ -27,6 +27,7 @@ func main() {
 		fmt.Printf("parse configFile failed. err:%s\n", err)
 		return
 	}
+	fmt.Printf("%+v", slaveCfg)
 
 	// init log
 	logs.ConfiglogrusrusWithFile(slaveCfg.Logconf)
@@ -54,19 +55,19 @@ func main() {
 
 	// Init syncer
 	syncer := NewSyncer(info)
-	go func() {
-		serr := syncer.Run()
-		if serr != nil {
-			log.Errorf("syncer run failed. err:%s", serr)
-			return
-		}
-	}()
-
 	// defer
 	defer func() {
 		syncer.Close()
 		_ = kproducer.Close()
 		_ = info.Close()
+	}()
+
+	go func() {
+		serr := syncer.Run()
+		if serr != nil {
+			panic("syncer run failed. err:" + serr.Error())
+			return
+		}
 	}()
 
 	// Deal with signal

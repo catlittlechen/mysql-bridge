@@ -1,28 +1,30 @@
-log_config: ./etc/logrus.yaml
+log_config: /home/ymserver/bin/mysql-bridge/etc/logrus.yaml
 
-info_dir: ./data/info
+info_dir: /data2/mysql-bridge/info/
 
-server_id: 10086
+server_id: 28080
 
 second: 1s
 
 mysql:
-    host: 127.0.0.1
+    host: awsjp-db-10.cywhfyrskwsb.ap-northeast-1.rds.amazonaws.com
     port: 3306
-    user: root
-    password: 1232123
+    user: youmi_db_gw
+    password: t2*O!h4!CU4BiR%I
 
 redis:
     host: 127.0.0.1:6379
-    db: 0
+    db: 15
 
 kafka:
     broker_list:
-        - 172.16.5.225:9092
+        - kafka-00.ad.awsjp:9092
+        - kafka-01.ad.awsjp:9092
+        - kafka-02.ad.awsjp:9092
     flush_time: 1s
 
 table:
-    replication_topic: mysql_test7
+    replication_topic: mysql_bridge_v1
     replication:
-        - mysql_slave_test@a*
+        - youmi_ad@ad_pool*
     max_size: 65536
