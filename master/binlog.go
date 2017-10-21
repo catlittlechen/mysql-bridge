@@ -218,7 +218,12 @@ func (b *BinLogWriter) CreateNewBinLogFile(filename string) (file *os.File, err 
 }
 
 func (b *BinLogWriter) RotateFile() (err error) {
-	stat, _ := b.file.Stat()
+	var stat os.FileInfo
+	stat, err = b.file.Stat()
+	if err != nil {
+		return
+	}
+
 	size := stat.Size()
 	if size > masterCfg.Mysql.BinLogSize {
 
