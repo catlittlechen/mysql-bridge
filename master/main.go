@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"runtime/debug"
 	"strconv"
 	"syscall"
 
@@ -19,6 +20,7 @@ import (
 var (
 	config    = flag.String("c", "./etc/config.yaml", "config")
 	kconsumer *kafka.KafkaConsumer
+	errorchan = make(chan bool)
 )
 
 func main() {
@@ -47,9 +49,17 @@ func main() {
 	binLogWriter := new(BinLogWriter)
 	// init binlog
 	go func() {
+		defer func() {
+			rerr := recover()
+			if rerr != nil {
+				log.Errorf(debug.Stack())
+				errorChan <- bool
+			}
+		}()
 		err := binLogWriter.WriteBinlog()
 		if err != nil {
-			panic("write binlog failed. err:" + err.Error())
+			log.Errorf("write binlog failed. err:" + err.Error())
+			errorchan <- true
 		}
 		return
 	}()
@@ -65,10 +75,18 @@ func main() {
 	mock.Args = masterCfg.MockArgs
 
 	go func() {
+		defer func() {
+			rerr := recover()
+			if rerr != nil {
+				log.Errorf(debug.Stack())
+				errorChan <- bool
+			}
+		}()
 		for {
 			c, err := l.Accept()
 			if err != nil {
 				log.Errorf("listen accept failed. err:%s", err)
+				errorchan <- true
 				return
 			}
 
@@ -77,11 +95,19 @@ func main() {
 			conn, err := server.NewConn(c, masterCfg.Mysql.User, masterCfg.Mysql.Password, mock)
 			if err != nil {
 				log.Errorf("server newConn failed. err:%s", err)
+				errorchan <- true
 				return
 			}
 			log.Info("server newConn success")
 
 			go func() {
+				defer func() {
+					rerr := recover()
+					if rerr != nil {
+						log.Errorf(debug.Stack())
+						errorChan <- bool
+					}
+				}()
 				for {
 					err := conn.HandleCommand()
 					if err != nil {
@@ -105,7 +131,10 @@ func main() {
 		syscall.SIGTERM,
 		syscall.SIGQUIT)
 
-	<-sc
+	select {
+	case <-sc:
+	case <-errorchan:
+	}
 
 	binLogWriter.Close()
 	kconsumer.Close()

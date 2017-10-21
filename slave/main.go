@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"runtime/debug"
 	"syscall"
 
 	"git.umlife.net/backend/mysql-bridge/kafka"
@@ -17,6 +18,7 @@ import (
 var (
 	config    = flag.String("c", "./etc/config.yaml", "config")
 	kproducer *kafka.KafkaProducer
+	errorChan = make(chan bool)
 )
 
 func main() {
@@ -55,18 +57,19 @@ func main() {
 	// Init syncer
 	syncer := NewSyncer(info)
 	go func() {
+		defer func() {
+			rerr := recover()
+			if rerr != nil {
+				log.Errorf(debug.Stack())
+				errorChan <- bool
+			}
+		}()
 		serr := syncer.Run()
 		if serr != nil {
 			log.Errorf("syncer run failed. err:%s", serr)
+			errorChan <- bool
 			return
 		}
-	}()
-
-	// defer
-	defer func() {
-		syncer.Close()
-		_ = kproducer.Close()
-		_ = info.Close()
 	}()
 
 	// Deal with signal
@@ -76,7 +79,14 @@ func main() {
 		syscall.SIGTERM,
 		syscall.SIGQUIT)
 
-	<-sc
+	select {
+	case <-sc:
+	case <-close:
+	}
+
+	syncer.Close()
+	_ = kproducer.Close()
+	_ = info.Close()
 
 	return
 }
