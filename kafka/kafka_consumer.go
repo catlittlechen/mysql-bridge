@@ -138,11 +138,17 @@ func (k *KafkaConsumer) Close() {
 		return
 	}
 	k.closed = true
-	k.ring.Close()
 	for _, pc := range k.partitionConsumerArray {
 		_ = pc.consumer.Close()
 	}
 	_ = k.c.Close()
+
+	k.ring.Close()
 	_ = k.offsetInfo.Save()
 	return
+}
+
+// Save .
+func (k *KafkaConsumer) Save() {
+	_ = k.offsetInfo.Save()
 }

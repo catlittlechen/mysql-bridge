@@ -18,7 +18,9 @@ type RingBuffer struct {
 	batter uint64
 
 	channel chan *ConsumerMessage
-	closed  bool
+
+	closed     bool
+	runChannel chan bool
 }
 
 func NewRingBuffer(length int, seqID uint64, sleep time.Duration) *RingBuffer {
@@ -26,13 +28,14 @@ func NewRingBuffer(length int, seqID uint64, sleep time.Duration) *RingBuffer {
 		seqID = global.MinSeqID
 	}
 	r := &RingBuffer{
-		length:  length,
-		sleep:   sleep,
-		buffer:  make([]*ConsumerMessage, length),
-		now:     0,
-		seqID:   seqID,
-		batter:  seqID + uint64(length),
-		channel: make(chan *ConsumerMessage, 1024),
+		length:     length,
+		sleep:      sleep,
+		buffer:     make([]*ConsumerMessage, length),
+		now:        0,
+		seqID:      seqID,
+		batter:     seqID + uint64(length),
+		channel:    make(chan *ConsumerMessage, 1024),
+		runChannel: make(chan bool, 1),
 	}
 	if r.batter > global.MaxSeqID {
 		r.batter = r.batter - global.MaxSeqID + global.MinSeqID - 1
@@ -42,6 +45,9 @@ func NewRingBuffer(length int, seqID uint64, sleep time.Duration) *RingBuffer {
 }
 
 func (r *RingBuffer) Run() {
+	defer func() {
+		r.runChannel <- true
+	}()
 	for {
 		for {
 			if r.closed {
@@ -83,6 +89,9 @@ func (r *RingBuffer) Set(cm *ConsumerMessage) {
 	log.Infof("batter %d now %d binlog:%d ringLen:%d min: %d max: %d", r.batter, r.now, cm.BinLog.SeqID, r.length, global.MinSeqID, global.MaxSeqID)
 
 	for {
+		if r.closed {
+			return
+		}
 		// 抛弃某些奇怪的ID
 		seqID := cm.BinLog.SeqID
 		if seqID < r.seqID && global.MaxSeqID-global.MinSeqID+1 > 2*(r.seqID-seqID) {
@@ -119,5 +128,7 @@ func (r *RingBuffer) Close() {
 		return
 	}
 	r.closed = true
+	<-r.runChannel
+	close(r.channel)
 	return
 }

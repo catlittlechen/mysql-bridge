@@ -45,7 +45,7 @@ func main() {
 	log.Info("new kafka conusmer success")
 	defer kconsumer.Close()
 
-	binLogWriter := new(BinLogWriter)
+	binLogWriter := NewBinLogWriter()
 	// init binlog
 	go func() {
 		defer func() {
@@ -122,6 +122,7 @@ func main() {
 	defer func() {
 		kconsumer.Close()
 		binLogWriter.Close()
+		kconsumer.Save()
 	}()
 
 	// Deal with signal
@@ -138,6 +139,7 @@ func main() {
 
 	kconsumer.Close()
 	binLogWriter.Close()
+	kconsumer.Save()
 
 	return
 }
