@@ -120,8 +120,8 @@ func main() {
 	}()
 
 	defer func() {
-		binLogWriter.Close()
 		kconsumer.Close()
+		binLogWriter.Close()
 	}()
 
 	// Deal with signal
@@ -136,8 +136,8 @@ func main() {
 	case <-errorChan:
 	}
 
-	binLogWriter.Close()
 	kconsumer.Close()
+	binLogWriter.Close()
 
 	return
 }
