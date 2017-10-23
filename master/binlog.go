@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/siddontang/go-mysql/replication"
+	log "github.com/sirupsen/logrus"
 )
 
 type BinLogWriter struct {
@@ -178,7 +179,11 @@ func (b *BinLogWriter) WriteBinlog() (err error) {
 
 	var header *replication.EventHeader
 	for msg := range kconsumer.Message() {
-		if msg == nil || b.closed {
+		if b.closed {
+			break
+		}
+		if msg == nil {
+			log.Warnf("kconsumer get msg is nil")
 			break
 		}
 		var stat os.FileInfo

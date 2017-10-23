@@ -104,6 +104,13 @@ func (k *KafkaConsumer) NewPartitionMessgae(pid int32, offset int64) (*Partition
 			if k.closed {
 				break
 			}
+
+			if msg == nil {
+				// TODO alterover?
+				log.Errorf("partitionConsumer get msg is nil")
+				break
+			}
+
 			binlog := new(global.BinLogData)
 			_ = json.Unmarshal(msg.Value, binlog)
 			bMsg := &ConsumerMessage{
