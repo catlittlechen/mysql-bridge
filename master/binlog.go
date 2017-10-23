@@ -17,8 +17,17 @@ import (
 )
 
 type BinLogWriter struct {
-	file   *os.File
-	closed bool
+	file       *os.File
+	closed     bool
+	runChannel chan bool
+}
+
+func NewBinLogWriter() *BinLogWriter {
+	return &BinLogWriter{
+		file:       nil,
+		closed:     false,
+		runChannel: make(chan bool, 1),
+	}
 }
 
 func ChangePositionAndCheckSum(data []byte, pos uint32) []byte {
@@ -132,6 +141,9 @@ func (b *BinLogWriter) NewFormatDescriptionEventData() []byte {
 // translation BEGIN + **** + XID
 // rewrite binlog
 func (b *BinLogWriter) WriteBinlog() (err error) {
+	defer func() {
+		b.runChannel <- true
+	}()
 
 	err = os.MkdirAll(masterCfg.Mysql.BinLogDir, 0755)
 	if err != nil {
@@ -248,9 +260,11 @@ func (b *BinLogWriter) Close() {
 		return
 	}
 	b.closed = true
+	<-b.runChannel
 	if b.file != nil {
 		_ = b.file.Sync()
 		_ = b.file.Close()
 	}
+
 	return
 }
