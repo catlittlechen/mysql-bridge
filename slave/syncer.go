@@ -13,9 +13,10 @@ import (
 )
 
 type Syncer struct {
-	syncer *replication.BinlogSyncer
-	info   *masterInfo
-	closed bool
+	syncer     *replication.BinlogSyncer
+	info       *masterInfo
+	closed     bool
+	runChannel chan bool
 }
 
 func NewSyncer(info *masterInfo) *Syncer {
@@ -32,13 +33,17 @@ func NewSyncer(info *masterInfo) *Syncer {
 	}
 
 	return &Syncer{
-		syncer: replication.NewBinlogSyncer(cfg),
-		info:   info,
-		closed: false,
+		syncer:     replication.NewBinlogSyncer(cfg),
+		info:       info,
+		closed:     false,
+		runChannel: make(chan bool, 1),
 	}
 }
 
 func (s *Syncer) Run() (err error) {
+	defer func() {
+		s.runChannel <- true
+	}()
 	// Start sync with sepcified binlog file and position
 	var streamer *replication.BinlogStreamer
 	streamer, err = s.syncer.StartSync(s.info.Position())
@@ -171,6 +176,7 @@ func (s *Syncer) record(dataList [][]byte, name string, pos uint32) (err error) 
 		log.Errorf("kafka producer send failed. err:%s", err)
 		err = DescSeqID()
 		if err != nil {
+			// not panic, but alerover
 			panic(err)
 		}
 		return
@@ -185,7 +191,8 @@ func (s *Syncer) Close() {
 	if s.closed {
 		return
 	}
-	s.syncer.Close()
 	s.closed = true
+	s.syncer.Close()
+	<-s.runChannel
 	return
 }

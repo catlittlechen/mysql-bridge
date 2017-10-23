@@ -276,3 +276,9 @@ func (h *MockHandler) HandleGetData() ([]byte, error) {
 func (h *MockHandler) HandleRegisterSlave(data []byte) error {
 	return nil
 }
+
+func (h *MockHandler) Close() {
+	if h.RedoLog != nil {
+		_ = h.RedoLog.Close()
+	}
+}

@@ -34,7 +34,6 @@ func main() {
 	fmt.Printf("config: %+v\n", masterCfg)
 
 	// init log
-	log.SetLevel(log.InfoLevel)
 	logs.ConfiglogrusrusWithFile(masterCfg.Logconf)
 
 	// init kafka
@@ -71,9 +70,6 @@ func main() {
 	}
 	log.Info("listen success")
 
-	mock := new(MockHandler)
-	mock.Args = masterCfg.MockArgs
-
 	go func() {
 		defer func() {
 			rerr := recover()
@@ -90,6 +86,9 @@ func main() {
 				return
 			}
 
+			mock := new(MockHandler)
+			mock.Args = masterCfg.MockArgs
+
 			// Create a connection with user root and an empty passowrd
 			// We only an empty handler to handle command too
 			conn, err := server.NewConn(c, masterCfg.Mysql.User, masterCfg.Mysql.Password, mock)
@@ -101,6 +100,7 @@ func main() {
 			log.Info("server newConn success")
 
 			go func() {
+				defer mock.Close()
 				defer func() {
 					rerr := recover()
 					if rerr != nil {
@@ -120,8 +120,8 @@ func main() {
 	}()
 
 	defer func() {
-		kconsumer.Close()
 		binLogWriter.Close()
+		kconsumer.Close()
 	}()
 
 	// Deal with signal

@@ -50,7 +50,7 @@ func InitRedis() error {
 	return nil
 }
 
-// TODO 没有容错性
+// TODO 如果独立部署这部分的逻辑做成分发器，可以开发出随意添加同步表的功能
 func GetSeqID() (uint64, error) {
 	conn := redisPool.Get()
 	defer func() {

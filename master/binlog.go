@@ -181,7 +181,11 @@ func (b *BinLogWriter) WriteBinlog() (err error) {
 		if msg == nil || b.closed {
 			break
 		}
-		stat, _ := b.file.Stat()
+		var stat os.FileInfo
+		stat, err = b.file.Stat()
+		if err != nil {
+			return
+		}
 		size := uint32(stat.Size())
 		binLogList := msg.BinLog.Data
 		length := 0
@@ -203,12 +207,12 @@ func (b *BinLogWriter) WriteBinlog() (err error) {
 		header = new(replication.EventHeader)
 		err = header.Decode(binLogList[len(binLogList)-1][:19])
 		if err != nil {
-			return err
+			return
 		}
 		if header.EventType == replication.XID_EVENT {
 			err = b.RotateFile()
 			if err != nil {
-				return err
+				return
 			}
 		}
 
@@ -224,6 +228,7 @@ func (b *BinLogWriter) CreateNewBinLogFile(filename string) (file *os.File, err 
 	}
 	data := b.NewFormatDescriptionEventData()
 	data = ChangePositionAndCheckSum(data, uint32(len(data)+4))
+	// binlog magic code....
 	_, _ = file.Write([]byte{0, 0, 0, 0})
 	_, _ = file.Write(data)
 	return
