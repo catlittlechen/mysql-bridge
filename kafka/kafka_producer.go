@@ -3,6 +3,7 @@ package kafka
 import (
 	"github.com/Shopify/sarama"
 	"github.com/satori/go.uuid"
+	log "github.com/sirupsen/logrus"
 )
 
 // KafkaProducer .
@@ -46,5 +47,10 @@ func (k *KafkaProducer) Send(topic string, data []byte) (err error) {
 // Close .
 func (k *KafkaProducer) Close() error {
 	k.closed = true
-	return k.p.Close()
+	err := k.p.Close()
+	if err != nil {
+		return err
+	}
+	log.Info("KafkaProducer close success")
+	return nil
 }

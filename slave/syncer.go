@@ -194,5 +194,6 @@ func (s *Syncer) Close() {
 	s.closed = true
 	s.syncer.Close()
 	<-s.runChannel
+	log.Infof("syncer close success..")
 	return
 }

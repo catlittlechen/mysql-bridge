@@ -105,5 +105,10 @@ func (m *masterInfo) Position() mysql.Position {
 func (m *masterInfo) Close() error {
 	pos := m.Position()
 
-	return m.Save(pos)
+	err := m.Save(pos)
+	if err != nil {
+		return err
+	}
+	log.Info("masterInfo save success..")
+	return nil
 }
