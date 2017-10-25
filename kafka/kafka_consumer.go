@@ -9,8 +9,9 @@ import (
 )
 
 type ConsumerMessage struct {
-	Msg    *sarama.ConsumerMessage
-	BinLog *global.BinLogData
+	PartitionID int32
+	Offset      int64
+	BinLog      *global.BinLogData
 }
 
 type PartitionMessage struct {
@@ -114,8 +115,9 @@ func (k *KafkaConsumer) NewPartitionMessgae(pid int32, offset int64) (*Partition
 			binlog := new(global.BinLogData)
 			_ = json.Unmarshal(msg.Value, binlog)
 			bMsg := &ConsumerMessage{
-				Msg:    msg,
-				BinLog: binlog,
+				PartitionID: msg.Partition,
+				Offset:      msg.Offset,
+				BinLog:      binlog,
 			}
 			k.ring.Set(bMsg)
 		}
@@ -128,7 +130,7 @@ func (k *KafkaConsumer) Message() <-chan *ConsumerMessage {
 }
 
 func (k *KafkaConsumer) Callback(cm *ConsumerMessage) {
-	k.offsetInfo.Set(cm.BinLog.SeqID, cm.Msg.Partition, cm.Msg.Offset)
+	k.offsetInfo.Set(cm.BinLog.SeqID, cm.PartitionID, cm.Offset)
 	return
 }
 
