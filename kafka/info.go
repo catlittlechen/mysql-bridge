@@ -78,12 +78,6 @@ func (m *OffsetInfo) Save() error {
 		return nil
 	}
 
-	n := time.Now()
-	if n.Sub(m.lastSaveTime) < time.Second {
-		return nil
-	}
-
-	m.lastSaveTime = n
 	data, err := yaml.Marshal(m)
 	if err != nil {
 		return err
@@ -91,9 +85,11 @@ func (m *OffsetInfo) Save() error {
 
 	if err = ioutil2.WriteFileAtomic(m.filePath, data, 0644); err != nil {
 		log.Errorf("canal save master info to file %s err %v", m.filePath, err)
+		return err
 	}
 
-	return err
+	log.Infof("offset save success. m:%+v", m)
+	return nil
 }
 
 func (m *OffsetInfo) Set(seqID uint64, pid int32, offset int64) {

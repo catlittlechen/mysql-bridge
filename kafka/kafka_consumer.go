@@ -130,6 +130,7 @@ func (k *KafkaConsumer) Message() <-chan *ConsumerMessage {
 }
 
 func (k *KafkaConsumer) Callback(cm *ConsumerMessage) {
+	log.Infof("KafkaConsumer callback seqID %d pid %d offset %d", cm.BinLog.SeqID, cm.PartitionID, cm.Offset)
 	k.offsetInfo.Set(cm.BinLog.SeqID, cm.PartitionID, cm.Offset)
 	return
 }
@@ -147,10 +148,12 @@ func (k *KafkaConsumer) Close() {
 
 	k.ring.Close()
 	_ = k.offsetInfo.Save()
+	log.Info("KafkaConsumer close...")
 	return
 }
 
 // Save .
 func (k *KafkaConsumer) Save() {
 	_ = k.offsetInfo.Save()
+	log.Info("KafkaConsumer save...")
 }

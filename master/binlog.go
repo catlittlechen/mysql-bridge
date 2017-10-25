@@ -178,7 +178,9 @@ func (b *BinLogWriter) WriteBinlog() (err error) {
 	}
 
 	var header *replication.EventHeader
-	for msg := range kconsumer.Message() {
+	kcmChannel := kconsumer.Message()
+	for {
+		msg := <-kcmChannel
 		if b.closed {
 			break
 		}
@@ -275,6 +277,7 @@ func (b *BinLogWriter) Close() {
 		_ = b.file.Sync()
 		_ = b.file.Close()
 	}
+	log.Info("binLogWriter close...")
 
 	return
 }

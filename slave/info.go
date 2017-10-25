@@ -81,13 +81,6 @@ func (m *masterInfo) Save(pos mysql.Position) error {
 		return nil
 	}
 
-	n := time.Now()
-	if n.Sub(m.lastSaveTime) < time.Second {
-		return nil
-	}
-
-	m.lastSaveTime = n
-
 	data, err := yaml.Marshal(m)
 	if err != nil {
 		return err
