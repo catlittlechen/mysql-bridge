@@ -21,11 +21,6 @@ const (
  */
 
 func MurmurHash2(key []byte) uint32 {
-	/*
-	   	 * 'm' and 'r' are mixing constants generated offline.
-	    * They're not really 'magic', they just happen to work well.
-	*/
-
 	seed := uint32(0x9747b28c)
 	m := uint32(0x5bd1e995)
 	r := uint32(24)

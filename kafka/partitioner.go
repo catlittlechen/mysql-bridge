@@ -4,6 +4,10 @@ package kafka
 
 import "github.com/Shopify/sarama"
 
+func toPositive(number uint32) uint32 {
+	return number & 0x7fffffff
+}
+
 type DefaultPartitioner struct {
 }
 
@@ -21,7 +25,7 @@ func (p *DefaultPartitioner) Partition(message *sarama.ProducerMessage, numParti
 	if err != nil {
 		return -1, err
 	}
-	partition := int32(MurmurHash2(bytes) % uint32(numPartitions))
+	partition := int32(toPositive(MurmurHash2(bytes)) % uint32(numPartitions))
 	return partition, nil
 }
 
