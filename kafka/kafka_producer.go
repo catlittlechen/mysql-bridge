@@ -20,6 +20,7 @@ func NewKafkaProducer(config KafkaProducerConfig) (*KafkaProducer, error) {
 	cfg.Producer.RequiredAcks = sarama.WaitForAll
 	cfg.Producer.Return.Successes = true
 	cfg.Producer.Return.Errors = true
+	cfg.Producer.Partitioner = NewDefaultPartitioner
 
 	var err error
 	client := new(KafkaProducer)
