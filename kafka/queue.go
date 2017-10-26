@@ -4,12 +4,9 @@ package kafka
 
 import (
 	"strconv"
+	"sync"
 
 	log "github.com/sirupsen/logrus"
-)
-
-const (
-	InitOffset int64 = -1
 )
 
 type qitem struct {
@@ -27,6 +24,7 @@ func CopyQItem(first *qitem) *qitem {
 }
 
 type SQueue struct {
+	sync.Mutex
 	expectOffset int64
 	head         *qitem
 	tail         *qitem
@@ -38,9 +36,12 @@ func InitSQueue(offset int64) *SQueue {
 	}
 }
 
-func (sq *SQueue) Do(offset int64) int64 {
+func (sq *SQueue) Do(offset int64) (int64, bool) {
+	sq.Lock()
+	defer sq.Unlock()
+
 	if sq.expectOffset > offset {
-		return InitOffset
+		return 0, false
 	}
 	if sq.expectOffset == offset {
 		sq.expectOffset++
@@ -51,9 +52,11 @@ func (sq *SQueue) Do(offset int64) int64 {
 
 			sq.expectOffset++
 			sq.head = sq.head.right
-			sq.head.left = nil
+			if sq.head != nil {
+				sq.head.left = nil
+			}
 		}
-		return sq.expectOffset - 1
+		return sq.expectOffset - 1, true
 	}
 
 	now := sq.head
@@ -69,7 +72,11 @@ func (sq *SQueue) Do(offset int64) int64 {
 		next.left = now
 		now.right = next
 
-		return InitOffset
+		if now == sq.tail {
+			sq.tail = next
+		}
+
+		return 0, false
 	}
 
 	if sq.head == nil {
@@ -85,10 +92,13 @@ func (sq *SQueue) Do(offset int64) int64 {
 		sq.tail = sq.tail.right
 	}
 
-	return InitOffset
+	return 0, false
 }
 
 func (sq *SQueue) Print() {
+	sq.Lock()
+	defer sq.Unlock()
+
 	now := sq.head
 	s := strconv.Itoa(int(sq.expectOffset)) + "\t"
 	for now != nil {

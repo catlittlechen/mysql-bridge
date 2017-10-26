@@ -17,8 +17,9 @@ import (
 type OffsetInfo struct {
 	sync.Mutex `yaml:"-"`
 
-	PartitionOffset map[int32]int64 `yaml:"PartitionOffset"`
-	SequenceID      uint64          `yaml:"sequenceid"`
+	PartitionOffset map[int32]int64   `yaml:"PartitionOffset"`
+	SequenceID      uint64            `yaml:"sequenceid"`
+	QueueMap        map[int32]*SQueue `yaml:"-"`
 
 	filePath     string    `yaml:"-"`
 	lastSaveTime time.Time `yaml:"-"`
@@ -27,6 +28,7 @@ type OffsetInfo struct {
 func loadOffsetInfo(dataDir string, ticker time.Duration) (*OffsetInfo, error) {
 	var m OffsetInfo
 	m.PartitionOffset = make(map[int32]int64)
+	m.QueueMap = make(map[int32]*SQueue)
 
 	if len(dataDir) == 0 {
 		return &m, nil
@@ -50,6 +52,10 @@ func loadOffsetInfo(dataDir string, ticker time.Duration) (*OffsetInfo, error) {
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	for key, value := range m.PartitionOffset {
+		m.QueueMap[key] = InitSQueue(value)
 	}
 
 	go func() {
@@ -97,7 +103,10 @@ func (m *OffsetInfo) Set(seqID uint64, pid int32, offset int64) {
 	defer m.Unlock()
 
 	m.SequenceID = seqID
-	m.PartitionOffset[pid] = offset
+	saveOffset, ok := m.QueueMap[pid].Do(offset)
+	if ok {
+		m.PartitionOffset[pid] = saveOffset
+	}
 	return
 }
 
