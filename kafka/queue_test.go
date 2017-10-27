@@ -28,7 +28,7 @@ func TestQueue(t *testing.T) {
 
 	t.Logf("%+v\n", array)
 	for i = 0; i < count; i++ {
-		ans := qs.Do(array[i])
+		ans, _ := qs.Do(array[i])
 		qs.Print()
 		if ans != -1 {
 			t.Logf("%d ", ans)
