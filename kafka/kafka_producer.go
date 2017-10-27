@@ -38,7 +38,7 @@ func NewKafkaProducer(config KafkaProducerConfig) (*KafkaProducer, error) {
 func (k *KafkaProducer) Send(topic string, data []byte) (err error) {
 	msg := &sarama.ProducerMessage{
 		Topic: topic,
-		Key:   sarama.ByteEncoder(uuid.NewV4().Bytes()),
+		Key:   sarama.StringEncoder(uuid.NewV4().String()),
 		Value: sarama.ByteEncoder(data),
 	}
 	_, _, err = k.p.SendMessage(msg)
