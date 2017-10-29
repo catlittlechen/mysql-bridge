@@ -26,3 +26,8 @@ table:
     replication:
         - mysql_slave_test@a*
     max_size: 65536
+
+monitor:
+    host: 0.0.0.0
+    port: 10086
+    interval: 1
