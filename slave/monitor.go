@@ -67,8 +67,8 @@ func (monitor *Monitor) calculator() {
 		select {
 		case <-t:
 			monitor.dataLock.Lock()
-			monitor.preCount = monitor.count
 			monitor.avgCount = (monitor.count - monitor.preCount) / uint64(monitor.cfg.Interval)
+			monitor.preCount = monitor.count
 			monitor.dataLock.Unlock()
 		}
 	}
