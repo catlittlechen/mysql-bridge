@@ -113,14 +113,15 @@ func (k *KafkaConsumer) NewPartitionMessgae(pid int32, offset int64) (*Partition
 				break
 			}
 
+			binlog := new(global.BinLogData)
+			_ = json.Unmarshal(msg.Value, binlog)
+
 			keys := strings.Split(string(msg.Key), "-")
 			if len(keys) != 5 {
-				log.Warnf("fix bug for msg key")
+				log.Warnf("fix bug for msg key seqID:%d pid:%d offset:%d", binlog.SeqID, msg.Partition, msg.Offset)
 				continue
 			}
 
-			binlog := new(global.BinLogData)
-			_ = json.Unmarshal(msg.Value, binlog)
 			bMsg := &ConsumerMessage{
 				PartitionID: msg.Partition,
 				Offset:      msg.Offset,
