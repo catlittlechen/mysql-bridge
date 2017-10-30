@@ -74,6 +74,8 @@ func (s *Syncer) Run() (err error) {
 			log.Errorf("streamer getEvent failed. err:%s", err)
 			return
 		}
+		GlobalMonitor.AddCount()
+		GlobalMonitor.SetTimeStamp(event.Header.Timestamp)
 
 		switch event.Header.EventType {
 		case replication.QUERY_EVENT:

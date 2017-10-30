@@ -23,6 +23,7 @@ type Config struct {
 	Redis    RedisConfig               `yaml:"redis"`
 	Kafka    kafka.KafkaProducerConfig `yaml:"kafka"`
 	Table    TableConfig               `yaml:"table"`
+	Monitor  MonitorConfig             `yaml:"monitor"`
 }
 
 type MysqlConfig struct {
@@ -44,6 +45,12 @@ type TableConfig struct {
 	MaxSize          int      `yaml:"max_size"`
 
 	RepMap map[string][]*regexp.Regexp `yaml:"-"`
+}
+
+type MonitorConfig struct {
+	Host     string `yaml:"host"`
+	Port     uint16 `yaml:"port"`
+	Interval int    `yaml:"interval"`
 }
 
 func ParseConfigFile(filepath string) error {

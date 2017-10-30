@@ -34,6 +34,9 @@ func main() {
 	// init log
 	logs.ConfiglogrusrusWithFile(slaveCfg.Logconf)
 
+	// init monitor
+	InitMonitorWithConfig(slaveCfg.Monitor)
+
 	// Init redis
 	err = InitRedis()
 	if err != nil {
