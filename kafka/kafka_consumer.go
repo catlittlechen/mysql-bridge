@@ -2,6 +2,7 @@ package kafka
 
 import (
 	"encoding/json"
+	"strings"
 
 	"git.umlife.net/backend/mysql-bridge/global"
 	"github.com/Shopify/sarama"
@@ -110,6 +111,12 @@ func (k *KafkaConsumer) NewPartitionMessgae(pid int32, offset int64) (*Partition
 				// TODO alterover?
 				log.Errorf("partitionConsumer get msg is nil")
 				break
+			}
+
+			keys := strings.Split(string(msg.Key), "-")
+			if len(keys) != 5 {
+				log.Warnf("fix bug for msg key")
+				continue
 			}
 
 			binlog := new(global.BinLogData)
