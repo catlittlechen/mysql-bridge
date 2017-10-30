@@ -34,7 +34,7 @@ func NewRingBuffer(length int, seqID uint64, sleep time.Duration) *RingBuffer {
 		now:        0,
 		seqID:      seqID,
 		batter:     seqID + uint64(length),
-		channel:    make(chan *ConsumerMessage, 1024),
+		channel:    make(chan *ConsumerMessage, 10),
 		runChannel: make(chan bool, 1),
 	}
 	if r.batter > global.MaxSeqID {
