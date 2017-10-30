@@ -165,3 +165,10 @@ func (k *KafkaConsumer) Save() {
 	_ = k.offsetInfo.Save()
 	log.Info("KafkaConsumer save...")
 }
+
+func (k *KafkaConsumer) Info() []byte {
+	if k.offsetInfo != nil {
+		return k.offsetInfo.Info()
+	}
+	return nil
+}

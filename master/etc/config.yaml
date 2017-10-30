@@ -28,3 +28,9 @@ mockargs:
     server_uuid: 2857b32d-9e9a-11e7-a268-94de80cb4372
     global.binlog_checksum: CRC32
     GLOBAL.GTID_MODE: "OFF"
+
+
+monitor:
+    host: 0.0.0.0
+    port: 10086
+    interval: 1

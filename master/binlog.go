@@ -222,7 +222,8 @@ func (b *BinLogWriter) WriteBinlog() (err error) {
 				return
 			}
 		}
-
+		GlobalMonitor.AddCount()
+		GlobalMonitor.SetTimeStamp(header.Timestamp)
 	}
 
 	return

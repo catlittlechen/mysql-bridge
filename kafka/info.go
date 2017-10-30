@@ -98,6 +98,18 @@ func (m *OffsetInfo) Save() error {
 	return nil
 }
 
+func (m *OffsetInfo) Info() []byte {
+	m.Lock()
+	defer m.Unlock()
+
+	data, err := yaml.Marshal(m)
+	if err != nil {
+		return nil
+	}
+
+	return data
+}
+
 func (m *OffsetInfo) Set(seqID uint64, pid int32, offset int64) {
 	m.Lock()
 	defer m.Unlock()

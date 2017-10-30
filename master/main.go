@@ -36,6 +36,9 @@ func main() {
 	// init log
 	logs.ConfiglogrusrusWithFile(masterCfg.Logconf)
 
+	// init monitor
+	InitMonitorWithConfig(masterCfg.Monitor)
+
 	// init kafka
 	kconsumer, err = kafka.NewKafkaConsumer(masterCfg.Kafka)
 	if err != nil {
@@ -98,8 +101,10 @@ func main() {
 				return
 			}
 			log.Info("server newConn success")
+			GlobalMonitor.AddSlave()
 
 			go func() {
+				defer GlobalMonitor.RemoveSlave()
 				defer mock.Close()
 				defer func() {
 					rerr := recover()

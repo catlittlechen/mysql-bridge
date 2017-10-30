@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"runtime"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -21,6 +22,8 @@ type Monitor struct {
 	avgCount uint64
 
 	timestamp uint32
+
+	slave int
 
 	dataLock *sync.RWMutex
 }
@@ -50,6 +53,18 @@ func InitMonitorWithConfig(cfg MonitorConfig) {
 func (monitor *Monitor) AddCount() {
 	monitor.dataLock.Lock()
 	monitor.count++
+	monitor.dataLock.Unlock()
+}
+
+func (monitor *Monitor) AddSlave() {
+	monitor.dataLock.Lock()
+	monitor.slave++
+	monitor.dataLock.Unlock()
+}
+
+func (monitor *Monitor) RemoveSlave() {
+	monitor.dataLock.Lock()
+	monitor.slave--
 	monitor.dataLock.Unlock()
 }
 
@@ -85,6 +100,8 @@ func (monitor *Monitor) InfoHandler(c *gin.Context) {
 		"count: %d\n"+
 			"avg_count: %d\n"+
 			"timestamp: %s\n"+
+			"slave: %d\n"+
+			"kafka info: %s\n"+
 			"Go Version: %s\n"+
 			"Goroutine Num: %d\n"+
 			"NumCPU: %d\n"+
@@ -112,6 +129,8 @@ func (monitor *Monitor) InfoHandler(c *gin.Context) {
 		monitor.count,
 		monitor.avgCount,
 		time.Unix(int64(monitor.timestamp), 0).Format(time.RFC3339),
+		monitor.slave,
+		strings.Replace(string(kconsumer.Info()), "\n", "\t", -1),
 		runtime.Version(),
 		runtime.NumGoroutine(),
 		runtime.NumCPU(),
