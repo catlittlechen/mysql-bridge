@@ -2,7 +2,6 @@ package kafka
 
 import (
 	"encoding/json"
-	"strings"
 
 	"git.umlife.net/backend/mysql-bridge/global"
 	"github.com/Shopify/sarama"
@@ -102,6 +101,7 @@ func (k *KafkaConsumer) NewPartitionMessgae(pid int32, offset int64) (*Partition
 		consumer: cp,
 	}
 	go func() {
+		binlog := new(global.BinLogData)
 		for msg := range pm.consumer.Messages() {
 			if k.closed {
 				break
@@ -113,14 +113,9 @@ func (k *KafkaConsumer) NewPartitionMessgae(pid int32, offset int64) (*Partition
 				break
 			}
 
-			binlog := new(global.BinLogData)
+			binlog.Data = nil
+			binlog.SeqID = 0
 			_ = json.Unmarshal(msg.Value, binlog)
-
-			keys := strings.Split(string(msg.Key), "-")
-			if len(keys) != 5 {
-				log.Warnf("fix bug for msg key seqID:%d pid:%d offset:%d", binlog.SeqID, msg.Partition, msg.Offset)
-				continue
-			}
 
 			bMsg := &ConsumerMessage{
 				PartitionID: msg.Partition,
