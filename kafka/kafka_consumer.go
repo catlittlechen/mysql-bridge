@@ -170,5 +170,5 @@ func (k *KafkaConsumer) Info() []byte {
 	if k.offsetInfo != nil {
 		return k.offsetInfo.Info()
 	}
-	return nil
+	return []byte{}
 }
