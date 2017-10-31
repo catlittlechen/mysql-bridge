@@ -102,7 +102,6 @@ func (k *KafkaConsumer) NewPartitionMessgae(pid int32, offset int64) (*Partition
 		consumer: cp,
 	}
 	go func() {
-		binlog := new(global.BinLogData)
 		for msg := range pm.consumer.Messages() {
 			if k.closed {
 				break
@@ -114,8 +113,7 @@ func (k *KafkaConsumer) NewPartitionMessgae(pid int32, offset int64) (*Partition
 				break
 			}
 
-			binlog.Data = nil
-			binlog.SeqID = 0
+			binlog := new(global.BinLogData)
 			_ = json.Unmarshal(msg.Value, binlog)
 
 			bMsg := &ConsumerMessage{
