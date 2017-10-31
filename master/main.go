@@ -139,6 +139,8 @@ func main() {
 	select {
 	case <-sc:
 	case <-errorChan:
+	case kerr := <-kconsumer.Error():
+		log.Errorf("kconsumer err:%s", kerr)
 	}
 
 	kconsumer.Close()

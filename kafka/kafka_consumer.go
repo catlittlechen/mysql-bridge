@@ -33,12 +33,14 @@ type KafkaConsumer struct {
 
 	partitionConsumerArray []*PartitionMessage
 	channel                chan *ConsumerMessage
+	errChannel             chan error
 }
 
 // NewKafkaConsumer .
 func NewKafkaConsumer(config KafkaConsumerConfig) (*KafkaConsumer, error) {
 	cfg := sarama.NewConfig()
 	cfg.Consumer.MaxProcessingTime = config.Timeout
+	cfg.Consumer.Return.Errors = true
 	cfg.ChannelBufferSize = 10
 
 	client := new(KafkaConsumer)
@@ -72,6 +74,7 @@ func NewKafkaConsumer(config KafkaConsumerConfig) (*KafkaConsumer, error) {
 	}
 	client.ring = NewRingBuffer(config.RingLen, seqID, config.TimeSleep)
 	client.channel = client.ring.channel
+	client.errChannel = make(chan error, 1)
 
 	client.partitionConsumerArray = make([]*PartitionMessage, len(client.partitonsList))
 	for index, pid := range client.partitonsList {
@@ -101,6 +104,13 @@ func (k *KafkaConsumer) NewPartitionMessgae(pid int32, offset int64) (*Partition
 	pm := &PartitionMessage{
 		consumer: cp,
 	}
+
+	go func() {
+		for err := range pm.consumer.Errors() {
+			log.Errorf("partitionConsumer error :%s", err)
+			k.errChannel <- err
+		}
+	}()
 	go func() {
 		for msg := range pm.consumer.Messages() {
 			if k.closed {
@@ -129,6 +139,10 @@ func (k *KafkaConsumer) NewPartitionMessgae(pid int32, offset int64) (*Partition
 
 func (k *KafkaConsumer) Message() <-chan *ConsumerMessage {
 	return k.channel
+}
+
+func (k *KafkaConsumer) Error() <-chan error {
+	return k.errChannel
 }
 
 func (k *KafkaConsumer) Callback(cm *ConsumerMessage) {
