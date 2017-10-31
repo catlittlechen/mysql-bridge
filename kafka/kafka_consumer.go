@@ -39,6 +39,7 @@ type KafkaConsumer struct {
 func NewKafkaConsumer(config KafkaConsumerConfig) (*KafkaConsumer, error) {
 	cfg := sarama.NewConfig()
 	cfg.Consumer.MaxProcessingTime = config.Timeout
+	cfg.ChannelBufferSize = 10
 
 	client := new(KafkaConsumer)
 	client.cfg = config
