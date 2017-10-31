@@ -27,6 +27,22 @@ type MockHandler struct {
 	NewFile bool
 
 	Args map[string]interface{}
+
+	eventHeader *replication.EventHeader
+	headerByte  []byte
+	dataByte    []byte
+}
+
+func NewMockHandler(kv map[string]interface{}) *MockHandler {
+	obj := new(MockHandler)
+
+	obj.Args = kv
+
+	obj.eventHeader = new(replication.EventHeader)
+	obj.headerByte = make([]byte, replication.EventHeaderSize)
+	obj.dataByte = make([]byte, replication.EventHeaderSize)
+
+	return obj
 }
 
 func (h *MockHandler) GetValue(key string) (value interface{}) {
@@ -188,12 +204,9 @@ func (h *MockHandler) HandleDump(data []byte) error {
 
 func (h *MockHandler) HandleGetData() ([]byte, error) {
 	var (
-		eventHeader = new(replication.EventHeader)
-		hold        []byte
-		data        []byte
-		needLen     = replication.EventHeaderSize
-		n           int
-		err         error
+		needLen = replication.EventHeaderSize
+		n       int
+		err     error
 	)
 
 	if h.NewFile {
@@ -206,13 +219,9 @@ func (h *MockHandler) HandleGetData() ([]byte, error) {
 	}
 
 	// Header
-	hold = make([]byte, replication.EventHeaderSize)
 	for {
-		data = make([]byte, needLen)
-		n, err = h.RedoLog.Read(data)
+		n, err = h.RedoLog.Read(h.headerByte[len(h.headerByte)-needLen:])
 		if err == nil {
-			copy(hold[len(hold)-needLen:], data)
-			data = nil
 			break
 		}
 
@@ -220,28 +229,26 @@ func (h *MockHandler) HandleGetData() ([]byte, error) {
 			return nil, err
 		}
 
-		copy(hold[len(hold)-needLen:], data)
 		needLen -= n
-		data = nil
 		time.Sleep(time.Second)
 	}
 
-	err = eventHeader.Decode(hold)
+	err = h.eventHeader.Decode(h.headerByte)
 	if err != nil {
 		return nil, err
 	}
-	log.Debugf("header:%+v\n", eventHeader)
+	log.Debugf("header:%+v\n", h.eventHeader)
 
-	needLen = int(eventHeader.EventSize) - replication.EventHeaderSize
-	data = make([]byte, eventHeader.EventSize)
-	copy(data, hold)
-	hold = data
+	needLen = int(h.eventHeader.EventSize) - replication.EventHeaderSize
+	if int(h.eventHeader.EventSize) > len(h.dataByte) {
+		h.dataByte = make([]byte, h.eventHeader.EventSize)
+	}
+
+	hold := h.dataByte[:h.eventHeader.EventSize]
+	copy(hold, h.headerByte)
 	for {
-		data = make([]byte, needLen)
-		n, err = h.RedoLog.Read(data)
+		n, err = h.RedoLog.Read(hold[len(hold)-needLen:])
 		if err == nil {
-			copy(hold[len(hold)-needLen:], data)
-			data = nil
 			break
 		}
 
@@ -249,13 +256,11 @@ func (h *MockHandler) HandleGetData() ([]byte, error) {
 			return nil, err
 		}
 
-		copy(hold[replication.EventHeaderSize-needLen:], data)
 		needLen -= n
-		data = nil
 		time.Sleep(time.Second)
 	}
 
-	if eventHeader.EventType == replication.ROTATE_EVENT {
+	if h.eventHeader.EventType == replication.ROTATE_EVENT {
 		ev := new(replication.RotateEvent)
 		err = ev.Decode(hold[replication.EventHeaderSize : len(hold)-4])
 		if err != nil {

@@ -177,7 +177,7 @@ func (b *BinLogWriter) WriteBinlog() (err error) {
 		return
 	}
 
-	var header *replication.EventHeader
+	header := new(replication.EventHeader)
 	kcmChannel := kconsumer.Message()
 	for {
 		msg := <-kcmChannel
@@ -212,7 +212,6 @@ func (b *BinLogWriter) WriteBinlog() (err error) {
 		_ = b.file.Sync()
 		kconsumer.Callback(msg)
 
-		header = new(replication.EventHeader)
 		err = header.Decode(binLogList[len(binLogList)-1][:19])
 		if err != nil {
 			return

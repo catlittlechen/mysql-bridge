@@ -89,8 +89,7 @@ func main() {
 				return
 			}
 
-			mock := new(MockHandler)
-			mock.Args = masterCfg.MockArgs
+			mock := NewMockHandler(masterCfg.MockArgs)
 
 			// Create a connection with user root and an empty passowrd
 			// We only an empty handler to handle command too
