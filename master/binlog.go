@@ -177,6 +177,7 @@ func (b *BinLogWriter) WriteBinlog() (err error) {
 		return
 	}
 
+	hold := make([]byte, 0)
 	header := new(replication.EventHeader)
 	kcmChannel := kconsumer.Message()
 	for {
@@ -199,7 +200,12 @@ func (b *BinLogWriter) WriteBinlog() (err error) {
 		for _, binlog := range binLogList {
 			length += len(binlog)
 		}
-		data := make([]byte, length)
+		// TODO
+		if length > len(hold) {
+			log.Warnf("hold-date in WriteBinlog %d --> %d", len(hold), length)
+			hold = make([]byte, length)
+		}
+		data := hold[:length]
 		length = 0
 		for _, binlog := range binLogList {
 			size += uint32(len(binlog))

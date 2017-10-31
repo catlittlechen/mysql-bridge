@@ -241,6 +241,7 @@ func (h *MockHandler) HandleGetData() ([]byte, error) {
 
 	needLen = int(h.eventHeader.EventSize) - replication.EventHeaderSize
 	if int(h.eventHeader.EventSize) > len(h.dataByte) {
+		log.Warnf("dataByte in handler %d --> %d", len(h.dataByte), h.eventHeader.EventSize)
 		h.dataByte = make([]byte, h.eventHeader.EventSize)
 	}
 
