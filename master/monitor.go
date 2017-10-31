@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/DeanThompson/ginpprof"
 	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
 )
@@ -44,6 +45,7 @@ func InitMonitorWithConfig(cfg MonitorConfig) {
 		gin.SetMode(gin.ReleaseMode)
 		router := gin.New()
 		router.GET("/info", GlobalMonitor.InfoHandler)
+		ginpprof.Wrapper(router)
 		_ = router.Run(cfg.Host + ":" + strconv.Itoa(int(cfg.Port)))
 	}()
 

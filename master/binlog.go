@@ -208,6 +208,7 @@ func (b *BinLogWriter) WriteBinlog() (err error) {
 			length += len(binlog)
 		}
 		_, _ = b.file.Write(data)
+		data = nil
 		_ = b.file.Sync()
 		kconsumer.Callback(msg)
 
