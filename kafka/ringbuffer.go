@@ -88,19 +88,23 @@ func (r *RingBuffer) Run() {
 func (r *RingBuffer) Set(cm *ConsumerMessage) {
 	log.Infof("batter %d now %d binlog:%d ringLen:%d min: %d max: %d", r.batter, r.now, cm.BinLog.SeqID, r.length, global.MinSeqID, global.MaxSeqID)
 
+	var (
+		seqID  uint64
+		batter uint64
+	)
 	for {
 		if r.closed {
 			return
 		}
 		// 抛弃某些奇怪的ID
-		seqID := cm.BinLog.SeqID
+		seqID = cm.BinLog.SeqID
 		if seqID < r.seqID && global.MaxSeqID-global.MinSeqID+1 > 2*(r.seqID-seqID) {
 			log.Warnf("duplicate %d seqID:%d min:%d max:%d", seqID, r.seqID, global.MinSeqID, global.MaxSeqID)
 			break
 		}
 
 		// 比较的时候方便
-		batter := r.batter
+		batter = r.batter
 		if batter <= r.seqID {
 			batter = batter + global.MaxSeqID - global.MinSeqID + 1
 		}
