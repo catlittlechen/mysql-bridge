@@ -212,6 +212,7 @@ func (h *MockHandler) HandleGetData() ([]byte, error) {
 		n, err = h.RedoLog.Read(data)
 		if err == nil {
 			copy(hold[len(hold)-needLen:], data)
+			data = nil
 			break
 		}
 
@@ -221,6 +222,7 @@ func (h *MockHandler) HandleGetData() ([]byte, error) {
 
 		copy(hold[len(hold)-needLen:], data)
 		needLen -= n
+		data = nil
 		time.Sleep(time.Second)
 	}
 
@@ -239,6 +241,7 @@ func (h *MockHandler) HandleGetData() ([]byte, error) {
 		n, err = h.RedoLog.Read(data)
 		if err == nil {
 			copy(hold[len(hold)-needLen:], data)
+			data = nil
 			break
 		}
 
@@ -248,6 +251,7 @@ func (h *MockHandler) HandleGetData() ([]byte, error) {
 
 		copy(hold[replication.EventHeaderSize-needLen:], data)
 		needLen -= n
+		data = nil
 		time.Sleep(time.Second)
 	}
 
@@ -257,6 +261,7 @@ func (h *MockHandler) HandleGetData() ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
+
 		filename := filepath.Join(masterCfg.Mysql.BinLogDir, string(ev.NextLogName))
 		h.RedoLog, err = os.Open(filename)
 		if err != nil {
