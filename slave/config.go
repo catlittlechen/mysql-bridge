@@ -11,9 +11,11 @@ import (
 	"git.umlife.net/backend/mysql-bridge/kafka"
 )
 
-var slaveCfg Config
+var (
+	slaveCfg Config
+)
 
-// Config
+// Config 主配置
 type Config struct {
 	Logconf  string                    `yaml:"log_config"`
 	InfoDir  string                    `yaml:"info_dir"`

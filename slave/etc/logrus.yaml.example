@@ -4,7 +4,7 @@ disable_color: false
 paths:
     panic: ""
     fatal: ""
-    error: "./log/error.log"
+    error: "log/error.log"
     warn:  ""
-    info:  "./log/info.log"
-    debug: ""
+    info:  "log/info.log"
+    debug: "log/info.log"

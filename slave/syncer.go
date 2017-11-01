@@ -1,9 +1,11 @@
+// Copyright 2017
 // Author: chenkai@youmi.net
+//         huangjunwei@youmi.net
+
 package main
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"git.umlife.net/backend/mysql-bridge/global"
@@ -12,11 +14,11 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// Syncer 读取MySQL binlog，写入Kafka
 type Syncer struct {
-	syncer     *replication.BinlogSyncer
-	info       *masterInfo
-	closed     bool
-	runChannel chan bool
+	syncer *replication.BinlogSyncer
+	info   *masterInfo
+	closed bool
 }
 
 func NewSyncer(info *masterInfo) *Syncer {
@@ -33,23 +35,18 @@ func NewSyncer(info *masterInfo) *Syncer {
 	}
 
 	return &Syncer{
-		syncer:     replication.NewBinlogSyncer(cfg),
-		info:       info,
-		closed:     false,
-		runChannel: make(chan bool, 1),
+		syncer: replication.NewBinlogSyncer(cfg),
+		info:   info,
+		closed: false,
 	}
 }
 
-func (s *Syncer) Run() (err error) {
-	defer func() {
-		s.runChannel <- true
-	}()
+func (syncer *Syncer) Run() (err error) {
 	// Start sync with sepcified binlog file and position
 	var streamer *replication.BinlogStreamer
-	streamer, err = s.syncer.StartSync(s.info.Position())
+	streamer, err = syncer.syncer.StartSync(syncer.info.Position())
 	if err != nil {
-		log.Errorf("syncer start failed. err:%s", err)
-		return
+		return err
 	}
 
 	var (
@@ -62,16 +59,16 @@ func (s *Syncer) Run() (err error) {
 		splitTransaction bool
 
 		// master binlog info
-		name = s.info.Name
+		name = syncer.info.Name
 	)
 
 	for {
-		if s.closed {
+		if syncer.closed {
 			return
 		}
 		event, err = streamer.GetEvent(context.Background())
 		if err != nil {
-			log.Errorf("streamer getEvent failed. err:%s", err)
+			log.Errorf("Streamer GetEvent failed. err: %s", err.Error())
 			return
 		}
 		GlobalMonitor.AddCount()
@@ -83,10 +80,12 @@ func (s *Syncer) Run() (err error) {
 			if strings.EqualFold(strings.ToUpper(string(qe.Query)), "BEGIN") || transaction != nil || splitTransaction {
 				transaction = append(transaction, event.RawData)
 				size += len(event.RawData)
+
 			} else if _, ok := slaveCfg.Table.RepMap[strings.ToLower(string(qe.Schema))]; ok {
-				err = s.record([][]byte{event.RawData}, name, event.Header.LogPos)
+				// DML语句
+				err = syncer.record([][]byte{event.RawData}, name, event.Header.LogPos)
 				if err != nil {
-					log.Errorf("syncer record failed. err: %s", err)
+					log.Errorf("syncer record failed. binlog: %s, pos: %d, eventType: %s, err: %s", name, event.Header.LogPos, event.Header.EventType.String(), err.Error())
 					return
 				}
 			}
@@ -109,9 +108,9 @@ func (s *Syncer) Run() (err error) {
 			if (transaction != nil && len(transaction) != 1) || splitTransaction {
 				transaction = append(transaction, event.RawData)
 				size += len(event.RawData)
-				err = s.record(transaction, name, event.Header.LogPos)
+				err = syncer.record(transaction, name, event.Header.LogPos)
 				if err != nil {
-					log.Errorf("syncer record failed. err: %s", err)
+					log.Errorf("syncer record failed. binlog: %s, pos: %d, eventType: %s, err: %s", name, event.Header.LogPos, event.Header.EventType.String(), err.Error())
 					return
 				}
 			}
@@ -127,18 +126,18 @@ func (s *Syncer) Run() (err error) {
 			// ignore
 		default:
 			if transaction == nil && !splitTransaction {
-				err = s.record([][]byte{event.RawData}, name, event.Header.LogPos)
+				err = syncer.record([][]byte{event.RawData}, name, event.Header.LogPos)
 				if err != nil {
-					fmt.Println("syncer record failed. err:%s", err)
+					log.Errorf("syncer record failed. binlog: %s, pos: %d, eventType: %s, err: %s", name, event.Header.LogPos, event.Header.EventType.String(), err.Error())
 					return
 				}
 			} else if shouldWrite {
 				transaction = append(transaction, event.RawData)
 				size += len(event.RawData)
 				if size > slaveCfg.Table.MaxSize {
-					err = s.record(transaction, name, event.Header.LogPos)
+					err = syncer.record(transaction, name, event.Header.LogPos)
 					if err != nil {
-						fmt.Println("syncer record failed. err:%s", err)
+						log.Errorf("syncer record failed. binlog: %s, pos: %d, eventType: %s, err: %s", name, event.Header.LogPos, event.Header.EventType.String(), err.Error())
 						return
 					}
 					transaction = nil
@@ -147,8 +146,8 @@ func (s *Syncer) Run() (err error) {
 				}
 			}
 		}
-
 	}
+
 	return
 }
 
@@ -195,7 +194,6 @@ func (s *Syncer) Close() {
 	}
 	s.closed = true
 	s.syncer.Close()
-	<-s.runChannel
 	log.Infof("syncer close success..")
 	return
 }

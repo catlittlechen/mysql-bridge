@@ -179,7 +179,7 @@ func (b *BinLogWriter) WriteBinlog() (err error) {
 	if len(useFileInfos) != 0 {
 		sort.Strings(useFileInfos)
 		lastFileName = useFileInfos[len(useFileInfos)-1]
-		b.file, err = os.OpenFile(filepath.Join(masterCfg.Mysql.BinLogDir, lastFileName), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0643)
+		b.file, err = os.OpenFile(filepath.Join(masterCfg.Mysql.BinLogDir, lastFileName), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	} else {
 		b.file, err = b.CreateNewBinLogFile(lastFileName)
 	}
