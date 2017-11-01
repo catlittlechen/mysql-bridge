@@ -21,10 +21,17 @@ var (
 	config    = flag.String("c", "./etc/config.yaml", "config")
 	kconsumer *kafka.KafkaConsumer
 	errorChan = make(chan bool)
+
+	showVersion          = flag.Bool("version", false, "显示当前版本")
+	gitBranch, gitCommit string
 )
 
 func main() {
 	flag.Parse()
+	if *showVersion {
+		fmt.Printf("Version: %s\nBranch: %s\nCommit: %s\n", VERSION, gitBranch, gitCommit)
+		return
+	}
 
 	err := ParseConfigFile(*config)
 	if err != nil {

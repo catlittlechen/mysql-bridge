@@ -36,7 +36,7 @@ func loadOffsetInfo(dataDir string, ticker time.Duration) (*OffsetInfo, error) {
 
 	m.filePath = path.Join(dataDir, "offset.info")
 	m.lastSaveTime = time.Now()
-	log.Debugf("filePath: %s lastSaveTime:%d", m.filePath, m.lastSaveTime)
+	log.Infof("filePath: %s lastSaveTime:%d", m.filePath, m.lastSaveTime)
 
 	if err := os.MkdirAll(dataDir, 0755); err != nil {
 		return nil, err
@@ -60,7 +60,7 @@ func loadOffsetInfo(dataDir string, ticker time.Duration) (*OffsetInfo, error) {
 
 	go func() {
 		// Save binlog pos
-		log.Info("save binlog pos ticker:%d", ticker)
+		log.Infof("save binlog pos ticker:%d", ticker)
 		ticker := time.Tick(ticker)
 		for range ticker {
 			if time.Now().Unix()%60 == 0 {

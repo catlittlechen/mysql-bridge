@@ -55,13 +55,12 @@ func (r *RingBuffer) Run() {
 			}
 			if r.buffer[r.now] != nil {
 				if r.buffer[r.now].BinLog.SeqID == r.seqID {
-					log.Infof("get data index:%d expectSeqID:%d", r.now, r.seqID)
+					log.Debugf("get data index:%d expectSeqID:%d", r.now, r.seqID)
 					break
 				}
-				log.Errorf("ring bug! index:%d seqID:%d expectSeqID:%d", r.now,
-					r.buffer[r.now].BinLog.SeqID, r.seqID)
+				log.Errorf("ring bug! index:%d seqID:%d expectSeqID:%d", r.now, r.buffer[r.now].BinLog.SeqID, r.seqID)
 			}
-			log.Infof("waiting for data... index:%d expectSeqID:%d", r.now, r.seqID)
+			log.Debugf("waiting for data... index:%d expectSeqID:%d", r.now, r.seqID)
 			time.Sleep(r.sleep)
 		}
 
@@ -86,7 +85,7 @@ func (r *RingBuffer) Run() {
 }
 
 func (r *RingBuffer) Set(cm *ConsumerMessage) {
-	log.Infof("batter %d now %d binlog:%d ringLen:%d min: %d max: %d", r.batter, r.now, cm.BinLog.SeqID, r.length, global.MinSeqID, global.MaxSeqID)
+	log.Debugf("batter %d now %d binlog:%d ringLen:%d min: %d max: %d", r.batter, r.now, cm.BinLog.SeqID, r.length, global.MinSeqID, global.MaxSeqID)
 
 	var (
 		seqID  uint64
@@ -114,12 +113,12 @@ func (r *RingBuffer) Set(cm *ConsumerMessage) {
 
 		if seqID < batter {
 			r.buffer[r.length-int(batter-seqID)] = cm
-			log.Infof("binlog msg: seqID:%d pos:%d", cm.BinLog.SeqID, r.length-int(batter-seqID))
+			log.Debugf("binlog msg: seqID:%d pos:%d", cm.BinLog.SeqID, r.length-int(batter-seqID))
 			break
 		}
 		if seqID < r.seqID+uint64(r.length) {
 			r.buffer[seqID-batter] = cm
-			log.Infof("binlog msg: seqID:%d pos:%d", cm.BinLog.SeqID, seqID-batter)
+			log.Debugf("binlog msg: seqID:%d pos:%d", cm.BinLog.SeqID, seqID-batter)
 			break
 		}
 		time.Sleep(r.sleep)

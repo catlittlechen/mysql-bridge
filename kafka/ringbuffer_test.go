@@ -3,7 +3,6 @@
 package kafka
 
 import (
-	"fmt"
 	"math/rand"
 	"testing"
 	"time"
@@ -17,7 +16,7 @@ func TestRing(t *testing.T) {
 	go func() {
 		for {
 			data := <-r.channel
-			fmt.Println(data.BinLog.SeqID)
+			t.Log(data.BinLog.SeqID)
 		}
 	}()
 

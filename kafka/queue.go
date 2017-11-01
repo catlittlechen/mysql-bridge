@@ -105,5 +105,5 @@ func (sq *SQueue) Print() {
 		s += strconv.Itoa(int(now.offset)) + ", "
 		now = now.right
 	}
-	log.Infof(s)
+	log.Debugf(s)
 }

@@ -210,7 +210,7 @@ func (h *MockHandler) HandleGetData() ([]byte, error) {
 	)
 
 	if h.NewFile {
-		log.Warnf("new file[%s] has been read", h.RedoLog.Name())
+		log.Infof("new file[%s] has been read", h.RedoLog.Name())
 		data := NewRotateEventData(h.RedoLog.Name(), false)
 		data = ChangePositionAndCheckSum(data, 0)
 		h.NewFile = false
@@ -240,8 +240,8 @@ func (h *MockHandler) HandleGetData() ([]byte, error) {
 	log.Debugf("header:%+v\n", h.eventHeader)
 
 	if int(h.eventHeader.EventSize) > len(h.dataByte) {
-		log.Warnf("dataByte in handler %d --> %d", len(h.dataByte), h.eventHeader.EventSize)
-		log.Warnf("obj %+v, data:%s", h.eventHeader, h.headerByte)
+		log.Infof("dataByte in handler %d --> %d", len(h.dataByte), h.eventHeader.EventSize)
+		log.Infof("obj %+v, data:%s", h.eventHeader, h.headerByte)
 		h.dataByte = make([]byte, h.eventHeader.EventSize)
 	}
 
@@ -287,7 +287,7 @@ func (h *MockHandler) HandleGetData() ([]byte, error) {
 		log.Errorf("checkSum failed. size:%d, header:%+v, data: %s, err:%s", len(hold), h.eventHeader, hold, err)
 		return nil, err
 	}
-	log.Warnf("file:%s head.Size %d data:%d", h.RedoLog.Name(), h.eventHeader.EventSize, len(hold))
+	log.Debugf("file:%s head.Size %d data:%d", h.RedoLog.Name(), h.eventHeader.EventSize, len(hold))
 
 	return hold, nil
 }

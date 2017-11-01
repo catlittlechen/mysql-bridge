@@ -146,7 +146,7 @@ func (k *KafkaConsumer) Error() <-chan error {
 }
 
 func (k *KafkaConsumer) Callback(cm *ConsumerMessage) {
-	log.Infof("KafkaConsumer callback seqID %d pid %d offset %d", cm.BinLog.SeqID, cm.PartitionID, cm.Offset)
+	log.Debugf("KafkaConsumer callback seqID %d pid %d offset %d", cm.BinLog.SeqID, cm.PartitionID, cm.Offset)
 	k.offsetInfo.Set(cm.BinLog.SeqID, cm.PartitionID, cm.Offset)
 	return
 }
