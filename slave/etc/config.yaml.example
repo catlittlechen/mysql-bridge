@@ -1,6 +1,6 @@
-log_config: ./etc/logrus.yaml
+log_config: etc/logrus.yaml
 
-info_dir: ./data/info
+info_dir: data/info
 
 server_id: 10086
 
@@ -18,7 +18,7 @@ redis:
 
 kafka:
     broker_list:
-        - 172.16.5.225:9092
+        - 127.0.0.1:9092
     flush_time: 1s
 
 table:

@@ -16,20 +16,27 @@ import (
 )
 
 var (
-	config    = flag.String("c", "./etc/config.yaml", "config")
-	kproducer *kafka.KafkaProducer
-	errorChan = make(chan bool)
+	configFile = flag.String("c", "etc/config.yaml", "config")
+	kproducer  *kafka.KafkaProducer
+	errorChan  = make(chan bool)
+
+	showVersion          = flag.Bool("version", false, "显示当前版本")
+	gitBranch, gitCommit string
 )
 
 func main() {
 	flag.Parse()
-
-	err := ParseConfigFile(*config)
-	if err != nil {
-		fmt.Printf("parse configFile failed. err:%s\n", err)
+	if *showVersion {
+		fmt.Printf("Version: %s\nBranch: %s\nCommit: %s\n", VERSION, gitBranch, gitCommit)
 		return
 	}
-	fmt.Printf("%+v", slaveCfg)
+
+	err := ParseConfigFile(*configFile)
+	if err != nil {
+		fmt.Printf("Parse config file failed. err: %s\n", err.Error())
+		return
+	}
+	fmt.Printf("%+v\n", slaveCfg)
 
 	// init log
 	logs.ConfiglogrusrusWithFile(slaveCfg.Logconf)
@@ -40,21 +47,21 @@ func main() {
 	// Init redis
 	err = InitRedis()
 	if err != nil {
-		log.Errorf("init redis failed. err:%s", err)
+		log.Errorf("init redis failed. err: %s", err.Error())
 		return
 	}
 
 	// Init kafka
 	kproducer, err = kafka.NewKafkaProducer(slaveCfg.Kafka)
 	if err != nil {
-		log.Errorf("init kafka failed. err:%s", err)
+		log.Errorf("init kafka failed. err: %s", err.Error())
 		return
 	}
 
 	// Load master mysql binlog info from file
 	info, err := loadMasterInfo(slaveCfg.InfoDir)
 	if err != nil {
-		log.Errorf("loadMasterInfo failed. err:%s", err)
+		log.Errorf("loadMasterInfo failed. err: %s", err.Error())
 		return
 	}
 
@@ -70,7 +77,7 @@ func main() {
 		}()
 		serr := syncer.Run()
 		if serr != nil {
-			log.Errorf("syncer run failed. err:%s", serr)
+			log.Errorf("syncer run failed. err: %s", serr.Error())
 			errorChan <- true
 			return
 		}
