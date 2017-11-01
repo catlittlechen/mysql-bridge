@@ -284,7 +284,7 @@ func (h *MockHandler) HandleGetData() ([]byte, error) {
 
 	err = CheckSum(hold)
 	if err != nil {
-		log.Errorf("checkSum failed. err:%s", err)
+		log.Errorf("checkSum failed. size:%d, header:%+v, data: %s, err:%s", len(hold), h.eventHeader, hold, err)
 		return nil, err
 	}
 	log.Warnf("file:%s head.Size %d data:%d", h.RedoLog.Name(), h.eventHeader.EventSize, len(hold))
