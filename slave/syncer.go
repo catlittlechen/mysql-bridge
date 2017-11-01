@@ -16,9 +16,10 @@ import (
 
 // Syncer 读取MySQL binlog，写入Kafka
 type Syncer struct {
-	syncer *replication.BinlogSyncer
-	info   *masterInfo
-	closed bool
+	syncer     *replication.BinlogSyncer
+	info       *masterInfo
+	closed     bool
+	runChannel chan bool
 }
 
 func NewSyncer(info *masterInfo) *Syncer {
@@ -35,13 +36,17 @@ func NewSyncer(info *masterInfo) *Syncer {
 	}
 
 	return &Syncer{
-		syncer: replication.NewBinlogSyncer(cfg),
-		info:   info,
-		closed: false,
+		syncer:     replication.NewBinlogSyncer(cfg),
+		info:       info,
+		closed:     false,
+		runChannel: make(chan bool, 1),
 	}
 }
 
 func (syncer *Syncer) Run() (err error) {
+	defer func() {
+		syncer.runChannel <- true
+	}()
 	// Start sync with sepcified binlog file and position
 	var streamer *replication.BinlogStreamer
 	streamer, err = syncer.syncer.StartSync(syncer.info.Position())
@@ -194,6 +199,7 @@ func (s *Syncer) Close() {
 	}
 	s.closed = true
 	s.syncer.Close()
+	<-s.runChannel
 	log.Infof("syncer close success..")
 	return
 }
