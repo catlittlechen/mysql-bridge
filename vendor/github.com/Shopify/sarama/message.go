@@ -116,17 +116,14 @@ func (m *Message) decode(pd packetDecoder) (err error) {
 		return err
 	}
 
-	if m.Version > 1 {
-		return PacketDecodingError{fmt.Sprintf("unknown magic byte (%v)", m.Version)}
-	}
-
 	attribute, err := pd.getInt8()
 	if err != nil {
 		return err
 	}
 	m.Codec = CompressionCodec(attribute & compressionCodecMask)
+	fmt.Println(m.Version)
 
-	if m.Version == 1 {
+	if m.Version >= 1 {
 		if err := (Timestamp{&m.Timestamp}).decode(pd); err != nil {
 			return err
 		}
