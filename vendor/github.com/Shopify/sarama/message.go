@@ -121,7 +121,6 @@ func (m *Message) decode(pd packetDecoder) (err error) {
 		return err
 	}
 	m.Codec = CompressionCodec(attribute & compressionCodecMask)
-	fmt.Println(m.Version)
 
 	if m.Version >= 1 {
 		if err := (Timestamp{&m.Timestamp}).decode(pd); err != nil {
