@@ -4,7 +4,6 @@ package main
 
 import (
 	"encoding/binary"
-	"errors"
 	"hash/crc32"
 	"io/ioutil"
 	"os"
@@ -30,21 +29,6 @@ func NewBinLogWriter() *BinLogWriter {
 		closed:     false,
 		runChannel: make(chan bool, 1),
 	}
-}
-
-func ChangePositionAndCheckSum(data []byte, pos uint32) []byte {
-	binary.LittleEndian.PutUint32(data[13:], pos)
-	binary.LittleEndian.PutUint32(data[len(data)-4:], crc32.ChecksumIEEE(data[0:len(data)-4]))
-	return data
-}
-
-func CheckSum(data []byte) error {
-	sum := crc32.ChecksumIEEE(data[0 : len(data)-4])
-	check := binary.LittleEndian.Uint32(data[len(data)-4:])
-	if sum != check {
-		return errors.New("checksum failed.")
-	}
-	return nil
 }
 
 // rotate close + open + fileDescription
@@ -179,7 +163,13 @@ func (b *BinLogWriter) WriteBinlog() (err error) {
 	if len(useFileInfos) != 0 {
 		sort.Strings(useFileInfos)
 		lastFileName = useFileInfos[len(useFileInfos)-1]
+		pos, werr := verify(lastFileName)
+		log.Infof("verify filename[%s] return pos %d, werr:%s", lastFileName, pos, werr)
 		b.file, err = os.OpenFile(filepath.Join(masterCfg.Mysql.BinLogDir, lastFileName), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			return
+		}
+		_, err = b.file.Seek(int64(pos), 0)
 	} else {
 		b.file, err = b.CreateNewBinLogFile(lastFileName)
 	}
