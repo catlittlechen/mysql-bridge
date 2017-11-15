@@ -13,8 +13,8 @@
 		},
 		{
 			"ImportPath": "github.com/Shopify/sarama",
-			"Comment": "v1.10.1-199-g606f9ba",
-			"Rev": "606f9ba8214665ce8e90379061c499446c1734f0"
+			"Comment": "v1.10.1-204-gb305748",
+			"Rev": "b305748200a6396c34b89fe5dacc768cb1a7ea69"
 		},
 		{
 			"ImportPath": "github.com/davecgh/go-spew/spew",

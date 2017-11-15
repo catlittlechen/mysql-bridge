@@ -42,6 +42,7 @@ func NewKafkaConsumer(config KafkaConsumerConfig) (*KafkaConsumer, error) {
 	cfg.Consumer.MaxProcessingTime = config.Timeout
 	cfg.Consumer.Return.Errors = true
 	cfg.ChannelBufferSize = 10
+	cfg.Version = sarama.V0_11_0_0
 
 	client := new(KafkaConsumer)
 	client.cfg = config

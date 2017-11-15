@@ -21,6 +21,7 @@ func NewKafkaProducer(config KafkaProducerConfig) (*KafkaProducer, error) {
 	cfg.Producer.Return.Successes = true
 	cfg.Producer.Return.Errors = true
 	cfg.Producer.Partitioner = NewDefaultPartitioner
+	cfg.Version = sarama.V0_11_0_0
 
 	var err error
 	client := new(KafkaProducer)
