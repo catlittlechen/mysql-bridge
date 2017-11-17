@@ -163,13 +163,15 @@ func (b *BinLogWriter) WriteBinlog() (err error) {
 	if len(useFileInfos) != 0 {
 		sort.Strings(useFileInfos)
 		lastFileName = useFileInfos[len(useFileInfos)-1]
-		pos, werr := verify(lastFileName)
+
+		fullFileName := filepath.Join(masterCfg.Mysql.BinLogDir, lastFileName)
+		pos, werr := verify(fullFileName)
 		log.Infof("verify filename[%s] return pos %d, werr:%s", lastFileName, pos, werr)
 		if werr != ErrCheckSum {
 			err = werr
 			return
 		}
-		b.file, err = os.OpenFile(filepath.Join(masterCfg.Mysql.BinLogDir, lastFileName), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		b.file, err = os.OpenFile(fullFileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
 			return
 		}
