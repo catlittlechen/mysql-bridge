@@ -5,6 +5,7 @@ package main
 import (
 	"encoding/binary"
 	"hash/crc32"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -167,7 +168,7 @@ func (b *BinLogWriter) WriteBinlog() (err error) {
 		fullFileName := filepath.Join(masterCfg.Mysql.BinLogDir, lastFileName)
 		pos, werr := verify(fullFileName)
 		log.Infof("verify filename[%s] return pos %d, werr:%s", lastFileName, pos, werr)
-		if werr != ErrCheckSum {
+		if werr != ErrCheckSum && werr != io.EOF {
 			err = werr
 			return
 		}
