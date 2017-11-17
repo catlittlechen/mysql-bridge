@@ -16,6 +16,9 @@ func verify(filename string) (pos int, err error) {
 		log.Errorf("verify open filename failed. err:%s", err)
 		return
 	}
+	defer func() {
+		_ = redoLog.Close()
+	}()
 
 	pos = 4
 	_, err = redoLog.Seek(int64(pos), 1)
