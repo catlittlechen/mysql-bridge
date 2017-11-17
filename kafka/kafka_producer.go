@@ -46,6 +46,17 @@ func (k *KafkaProducer) Send(topic string, data []byte) (err error) {
 	return
 }
 
+// Send 发送信息到指定的topic
+func (k *KafkaProducer) SendWithKey(topic string, key string, data []byte) (err error) {
+	msg := &sarama.ProducerMessage{
+		Topic: topic,
+		Key:   sarama.StringEncoder(key),
+		Value: sarama.ByteEncoder(data),
+	}
+	_, _, err = k.p.SendMessage(msg)
+	return
+}
+
 // Close .
 func (k *KafkaProducer) Close() error {
 	k.closed = true
