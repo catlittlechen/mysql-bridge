@@ -8,16 +8,16 @@ import (
 	"os/signal"
 	"syscall"
 
-	"git.umlife.net/backend/mysql-bridge/kafka"
+	"github.com/siddontang/go/log"
+
 	logs "git.umlife.net/backend/mysql-bridge/log"
-	log "github.com/sirupsen/logrus"
 )
 
 var (
-	config    = flag.String("c", "./etc/config.yaml", "config")
-	kconsumer *kafka.KafkaConsumer
-	kproducer *kafka.KafkaProducer
-	errorChan = make(chan bool)
+	config        = flag.String("c", "./etc/config.yaml", "config")
+	errorChan     = make(chan bool)
+	channelSink   SinkAdapter
+	channelSource SourceAdapter
 
 	showVersion          = flag.Bool("version", false, "显示当前版本")
 	gitBranch, gitCommit string
@@ -40,18 +40,31 @@ func main() {
 	// init log
 	logs.ConfiglogrusrusWithFile(channelCfg.Logconf)
 
-	// init kafka
-	kconsumer, err = kafka.NewKafkaConsumer(channelCfg.KafkaConsumer)
+	switch channelCfg.SinkType {
+	case TCPType:
+		channelSink = new(TCPSinkAdapter)
+	case KafkaType:
+		channelSink = new(KafkaSinkAdapter)
+	}
+
+	switch channelCfg.SourceType {
+	case TCPType:
+		channelSource = new(TCPSourceAdapter)
+	case KafkaType:
+		channelSource = new(KafkaSourceAdapter)
+	}
+
+	err = channelSink.New()
 	if err != nil {
-		log.Errorf("new kafka conusmer failed. err:%s", err)
+		log.Errorf("channelSink New failed. type:%d, err:%s", channelCfg.SinkType, err)
 		return
 	}
-	log.Info("new kafka conusmer success")
 
-	defer func() {
-		kconsumer.Close()
-		kconsumer.Save()
-	}()
+	err = channelSource.New(channelSink)
+	if err != nil {
+		log.Errorf("channelSource New failed. type:%d, err:%s", channelCfg.SourceType, err)
+		return
+	}
 
 	// Deal with signal
 	sc := make(chan os.Signal, 1)
@@ -65,8 +78,16 @@ func main() {
 	case <-errorChan:
 	}
 
-	kconsumer.Close()
-	kconsumer.Save()
+	err = channelSink.Close()
+	if err != nil {
+		log.Errorf("channelSink close failed. err:%s", err)
+	}
+	err = channelSource.Close()
+	if err != nil {
+		log.Errorf("channelSource close failed. err:%s", err)
+	}
+
+	log.Error("ByeBye")
 
 	return
 }

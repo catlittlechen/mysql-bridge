@@ -14,6 +14,7 @@ import (
 type SourceAdapter interface {
 	New(sink SinkAdapter) error
 	Consumer([]byte) error
+	Close() error
 }
 
 type KafkaSourceAdapter struct {
@@ -78,7 +79,7 @@ func (k *KafkaSourceAdapter) Consumer(data []byte) error {
 					break
 				}
 				log.Errorf("kconsumer sink produce failed. err:%s", err)
-				time.Sleep(time.Second)
+				time.Sleep(channelCfg.KafkaConsumerExt.FailSleep)
 			}
 			k.kconsumer.Callback(msg)
 			message = &Message{
@@ -89,6 +90,14 @@ func (k *KafkaSourceAdapter) Consumer(data []byte) error {
 			clean = false
 		}
 	}
+	return nil
+}
+
+func (k *KafkaSourceAdapter) Close() error {
+	if k.kconsumer == nil {
+		return nil
+	}
+	k.kconsumer.Close()
 	return nil
 }
 
@@ -115,4 +124,8 @@ func (t *TCPSourceAdapter) New(sink SinkAdapter) error {
 
 func (t *TCPSourceAdapter) Consumer(data []byte) error {
 	return t.sink.Produce(data)
+}
+
+func (t *TCPSourceAdapter) Close() error {
+	return nil
 }

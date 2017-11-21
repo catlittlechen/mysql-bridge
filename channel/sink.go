@@ -12,6 +12,7 @@ import (
 type SinkAdapter interface {
 	New() error
 	Produce([]byte) error
+	Close() error
 }
 
 type KafkaSinkAdapter struct {
@@ -39,6 +40,13 @@ func (k *KafkaSinkAdapter) Produce(bMsg []byte) error {
 	}
 
 	return nil
+}
+
+func (k *KafkaSinkAdapter) Close() error {
+	if k.kproducer == nil {
+		return nil
+	}
+	return k.kproducer.Close()
 }
 
 type TCPSinkAdapter struct {
@@ -88,4 +96,8 @@ func (t *TCPSinkAdapter) Produce(bMsg []byte) error {
 		return nil
 	}
 	return err
+}
+
+func (t *TCPSinkAdapter) Close() error {
+	return nil
 }
