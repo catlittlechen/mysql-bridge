@@ -44,6 +44,10 @@ func NewSource(cfg SourceConfig, handlerFunc func([]byte) error) (*Source, error
 	return client, nil
 }
 
+func (client *Source) Error() <-chan error {
+	return client.errChannel
+}
+
 func (client *Source) handler(conn net.Conn) {
 	defer func() {
 		_ = conn.Close()

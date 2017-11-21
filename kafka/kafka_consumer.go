@@ -9,6 +9,8 @@ import (
 )
 
 type ConsumerMessage struct {
+	Key         string
+	Value       []byte
 	PartitionID int32
 	Offset      int64
 	BinLog      *global.BinLogData
@@ -128,6 +130,8 @@ func (k *KafkaConsumer) NewPartitionMessgae(pid int32, offset int64) (*Partition
 			_ = json.Unmarshal(msg.Value, binlog)
 
 			bMsg := &ConsumerMessage{
+				Key:         string(msg.Key),
+				Value:       msg.Value,
 				PartitionID: msg.Partition,
 				Offset:      msg.Offset,
 				BinLog:      binlog,
