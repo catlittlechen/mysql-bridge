@@ -1,0 +1,10 @@
+log_config: ./etc/logrus.yaml
+
+source_type: 1
+source_tcp:
+    address: 0.0.0.0:17173
+
+sink_kafka: 1
+    broker_list:
+        - 127.0.0.1:9093
+    flush_time: 1s
