@@ -1,0 +1,3 @@
+master/mysql-bridge-master
+slave/mysql-bridge-slave
+channel/mysql-bridge-channel
