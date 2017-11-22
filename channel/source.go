@@ -44,8 +44,12 @@ func (k *KafkaSourceAdapter) Consumer(data []byte) error {
 	kcmChannel := k.kconsumer.Message()
 	var msg *kafka.ConsumerMessage
 
+	topic := channelCfg.KafkaConsumer.Topic
+	if channelCfg.KafkaConsumerExt.DefaultTopic != "" {
+		topic = channelCfg.KafkaConsumerExt.DefaultTopic
+	}
 	message := &Message{
-		Topic: channelCfg.KafkaConsumer.Topic,
+		Topic: topic,
 	}
 	length := 0
 	count := 0
@@ -83,7 +87,7 @@ func (k *KafkaSourceAdapter) Consumer(data []byte) error {
 			}
 			k.kconsumer.Callback(msg)
 			message = &Message{
-				Topic: channelCfg.KafkaConsumer.Topic,
+				Topic: topic,
 			}
 			length = 0
 			count = 0

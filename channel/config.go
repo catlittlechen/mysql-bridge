@@ -32,10 +32,11 @@ type Config struct {
 }
 
 type KafkaConsumerExtConfig struct {
-	MaxCount    int           `yaml:"max_count"`
-	MaxSize     int           `yaml:"max_size"`
-	MaxIdelTime time.Duration `yaml:"max_idel_time"`
-	FailSleep   time.Duration `yaml:"fail_sleep"`
+	MaxCount     int           `yaml:"max_count"`
+	MaxSize      int           `yaml:"max_size"`
+	MaxIdelTime  time.Duration `yaml:"max_idel_time"`
+	FailSleep    time.Duration `yaml:"fail_sleep"`
+	DefaultTopic string        `yaml:"default_topic"`
 }
 
 func ParseConfigFile(filepath string) error {

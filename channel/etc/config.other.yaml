@@ -18,7 +18,7 @@ source_kafka_ext:
     fail_sleep: 1s
 
 sink_type: 1
-sink_tcp: 1
+sink_tcp:
     address: 127.0.0.1:17173
     idle_timeout: 10s
     read_timeout: 1s
