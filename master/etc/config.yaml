@@ -16,7 +16,7 @@ kafka:
     broker_list:
         - 172.16.5.225:9092
     timeout: 1s
-    topic: mysql_test7
+    topic: mysql_test1
     offset_dir: ./data/offset
     default_seq_id: 0
     ticker: 1s

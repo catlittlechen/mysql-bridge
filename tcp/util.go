@@ -44,7 +44,7 @@ func readPacket(br *bufio.Reader) ([]byte, error) {
 
 func writePacket(conn net.Conn, data []byte) error {
 
-	length := len(data) - 4
+	length := len(data)
 	header := []byte{0, 0, 0, 0}
 	header[0] = byte(length)
 	header[1] = byte(length >> 8)
@@ -61,7 +61,7 @@ func writePacket(conn net.Conn, data []byte) error {
 	}
 
 	// write data
-	n, err = conn.Write(header)
+	n, err = conn.Write(data)
 	if err != nil {
 		return err
 	}

@@ -1,5 +1,6 @@
 enable_stdout: true
 disable_color: false
+log_level: debug
 
 paths:
     panic: ""

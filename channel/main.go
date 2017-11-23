@@ -8,9 +8,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/siddontang/go/log"
-
 	logs "git.umlife.net/backend/mysql-bridge/log"
+	log "github.com/sirupsen/logrus"
 )
 
 var (

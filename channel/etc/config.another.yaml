@@ -4,7 +4,8 @@ source_type: 1
 source_tcp:
     address: 0.0.0.0:17173
 
-sink_kafka: 1
+sink_type: 2
+sink_kafka:
     broker_list:
-        - 127.0.0.1:9093
+        - 172.16.5.225:9092
     flush_time: 1s

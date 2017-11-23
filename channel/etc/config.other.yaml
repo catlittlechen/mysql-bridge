@@ -12,10 +12,11 @@ source_kafka:
     ring_len: 500
     time_sleep: 100ms
 source_kafka_ext:
-    max_count: 100
+    max_count: 10
     max_size: 655360
     max_idel_time: 1s
     fail_sleep: 1s
+    default_topic: mysql_test1
 
 sink_type: 1
 sink_tcp:
@@ -24,11 +25,11 @@ sink_tcp:
     read_timeout: 1s
     write_timeout: 10s
 broadcast_sink_tcp:
-    - address: 127.0.0.1:17174
-      idle_timeout: 10s
-      read_timeout: 1s
-      write_timeout: 10s
-    - address: 127.0.0.1:17175
-      idle_timeout: 10s
-      read_timeout: 1s
-      write_timeout: 10s
+    #- address: 127.0.0.1:17174
+    #  idle_timeout: 10s
+    #  read_timeout: 1s
+    #  write_timeout: 10s
+    #- address: 127.0.0.1:17175
+    #  idle_timeout: 10s
+    #  read_timeout: 1s
+    #  write_timeout: 10s

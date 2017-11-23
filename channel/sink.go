@@ -7,6 +7,7 @@ import (
 
 	"git.umlife.net/backend/mysql-bridge/kafka"
 	"git.umlife.net/backend/mysql-bridge/tcp"
+	log "github.com/sirupsen/logrus"
 )
 
 type SinkAdapter interface {
@@ -26,6 +27,7 @@ func (k *KafkaSinkAdapter) New() error {
 }
 
 func (k *KafkaSinkAdapter) Produce(bMsg []byte) error {
+	log.Debugf("KafkaSinkAdapter Produce data:%s", bMsg)
 	obj := new(Message)
 	err := json.Unmarshal(bMsg, obj)
 	if err != nil {
@@ -55,16 +57,23 @@ type TCPSinkAdapter struct {
 }
 
 func (t *TCPSinkAdapter) New() error {
-	// Sink 一开始就没必要可以连接,所以忽略错误
-	t.tSink, _ = tcp.NewSink(channelCfg.Sink)
+	var err error
+	t.tSink, err = tcp.NewSink(channelCfg.Sink)
+	if err != nil {
+		return err
+	}
 	for _, cfg := range channelCfg.BroadcastSink {
-		obj, _ := tcp.NewSink(cfg)
+		obj, err := tcp.NewSink(cfg)
+		if err != nil {
+			return err
+		}
 		t.btSink = append(t.btSink, obj)
 	}
 	return nil
 }
 
 func (t *TCPSinkAdapter) Produce(bMsg []byte) error {
+	log.Debugf("TCPSinkAdapter Produce data:%s", bMsg)
 	err := t.tSink.Write(bMsg)
 	if err == nil {
 		return nil

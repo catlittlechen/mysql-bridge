@@ -4,6 +4,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"time"
 
 	"git.umlife.net/backend/mysql-bridge/kafka"
@@ -34,11 +35,20 @@ func (k *KafkaSourceAdapter) New(sink SinkAdapter) error {
 			log.Errorf("kconsumer error :%s", kerr)
 		}
 	}()
+
+	go func() {
+		kerr := k.Consumer(nil)
+		if kerr != nil {
+			log.Errorf("kconsumer consumber failed. err:%s", err)
+		}
+		return
+	}()
 	return nil
 	// do something
 }
 
 func (k *KafkaSourceAdapter) Consumer(data []byte) error {
+	log.Debugf("KafkaSourceAdapter Consumer data:%s", data)
 
 	ticker := time.Tick(channelCfg.KafkaConsumerExt.MaxIdelTime)
 	kcmChannel := k.kconsumer.Message()
@@ -57,8 +67,16 @@ func (k *KafkaSourceAdapter) Consumer(data []byte) error {
 	for {
 		select {
 		case <-ticker:
-			clean = true
+			log.Debugf("ticker!")
+			if count != 0 {
+				clean = true
+			}
 		case msg = <-kcmChannel:
+			log.Debugf("kcmChannel get msg: %+v", msg)
+			if msg == nil {
+				log.Warnf("kcmChannel get msg is nil")
+				return errors.New("kafka channel get nil msg")
+			}
 			message.Data = append(message.Data, KV{
 				Key:   msg.Key,
 				Value: msg.Value,
@@ -127,6 +145,7 @@ func (t *TCPSourceAdapter) New(sink SinkAdapter) error {
 }
 
 func (t *TCPSourceAdapter) Consumer(data []byte) error {
+	log.Debugf("TCPSourceAdapter Consumer data:%s", data)
 	return t.sink.Produce(data)
 }
 
