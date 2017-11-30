@@ -103,7 +103,12 @@ func (t *TCPSinkAdapter) Produce(bMsg []byte) error {
 	for _, s := range t.btSink {
 		go func() {
 			serr := s.Write(bMsg)
-			channel <- (serr == nil)
+			if serr != nil {
+				log.Errorf("BroadcastSink error:%s", serr)
+				channel <- false
+			} else {
+				channel <- true
+			}
 		}()
 	}
 
