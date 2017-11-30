@@ -44,6 +44,8 @@ func main() {
 		channelSink = new(TCPSinkAdapter)
 	case KafkaType:
 		channelSink = new(KafkaSinkAdapter)
+	case LogType:
+		channelSink = new(LogSinkAdapter)
 	}
 
 	switch channelCfg.SourceType {

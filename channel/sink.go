@@ -16,6 +16,22 @@ type SinkAdapter interface {
 	Close() error
 }
 
+type LogSinkAdapter struct {
+}
+
+func (l *LogSinkAdapter) New() error {
+	return nil
+}
+
+func (l *LogSinkAdapter) Produce(bMsg []byte) error {
+	log.Info(string(bMsg))
+	return nil
+}
+
+func (l *LogSinkAdapter) Close() error {
+	return nil
+}
+
 type KafkaSinkAdapter struct {
 	kproducer *kafka.KafkaProducer
 }

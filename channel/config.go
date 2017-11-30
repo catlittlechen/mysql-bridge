@@ -15,6 +15,7 @@ var channelCfg Config
 const (
 	TCPType   = 1
 	KafkaType = 2
+	LogType   = 3
 )
 
 type Config struct {
