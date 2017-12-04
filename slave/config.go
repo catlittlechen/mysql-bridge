@@ -21,7 +21,7 @@ type Config struct {
 	InfoDir  string                    `yaml:"info_dir"`
 	ServerID uint32                    `yaml:"server_id"`
 	Second   time.Duration             `yaml:"second"`
-	Mysql    MysqlConfig               `yaml:"mysql"`
+	Mysql    []MysqlConfig             `yaml:"mysql"`
 	Redis    RedisConfig               `yaml:"redis"`
 	Kafka    kafka.KafkaProducerConfig `yaml:"kafka"`
 	Table    TableConfig               `yaml:"table"`
@@ -29,10 +29,11 @@ type Config struct {
 }
 
 type MysqlConfig struct {
-	Host     string `yaml:"host"`
-	Port     uint16 `yaml:"port"`
-	User     string `yaml:"user"`
-	Password string `yaml:"password"`
+	Host         string `yaml:"host"`
+	Port         uint16 `yaml:"port"`
+	User         string `yaml:"user"`
+	Password     string `yaml:"password"`
+	InfoFileName string `yaml:"info_file_name"`
 }
 
 type RedisConfig struct {
