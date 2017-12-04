@@ -4,7 +4,8 @@
 	"GodepVersion": "v77",
 	"Packages": [
 		"./master",
-		"./slave"
+		"./slave",
+		"./channel"
 	],
 	"Deps": [
 		{
@@ -131,6 +132,10 @@
 		{
 			"ImportPath": "github.com/siddontang/go/sync2",
 			"Rev": "cb568a3e5cc06256f91a2da5a87455f717eb33f4"
+		},
+		{
+			"ImportPath": "github.com/silenceper/pool",
+			"Rev": "e6b389d645e39cf78930486d9f0290a77b178592"
 		},
 		{
 			"ImportPath": "github.com/sirupsen/logrus",
