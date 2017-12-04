@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"git.umlife.net/backend/mysql-bridge/global"
-
 	"github.com/siddontang/go-mysql/mysql"
 	"github.com/siddontang/go-mysql/replication"
 	log "github.com/sirupsen/logrus"
@@ -23,8 +22,27 @@ import (
 type MockHandler struct {
 	Pos      uint32
 	FileName string
-	RedoLog  *os.File
-	Args     map[string]interface{}
+
+	RedoLog *os.File
+	NewFile bool
+
+	Args map[string]interface{}
+
+	eventHeader *replication.EventHeader
+	headerByte  []byte
+	dataByte    []byte
+}
+
+func NewMockHandler(kv map[string]interface{}) *MockHandler {
+	obj := new(MockHandler)
+
+	obj.Args = kv
+
+	obj.eventHeader = new(replication.EventHeader)
+	obj.headerByte = make([]byte, replication.EventHeaderSize)
+	obj.dataByte = make([]byte, replication.EventHeaderSize)
+
+	return obj
 }
 
 func (h *MockHandler) GetValue(key string) (value interface{}) {
@@ -42,7 +60,7 @@ func (h *MockHandler) GetValue(key string) (value interface{}) {
 	if !ok {
 		value = "NULL"
 	}
-	log.Debugf("key %s, value:%s", key, value)
+	log.Infof("Mock GetValue key %s, value:%s", key, value)
 	return value
 }
 
@@ -57,7 +75,7 @@ func (h *MockHandler) UseDB(dbName string) error {
 
 // all logic is designed for mock master mysql for replication
 func (h *MockHandler) HandleQuery(query string) (*mysql.Result, error) {
-	log.Debugf("query string: %s", query)
+	log.Infof("query string: %s", query)
 
 	array := global.Split(query)
 	switch array[0] {
@@ -138,7 +156,11 @@ func (h *MockHandler) HandleDump(data []byte) error {
 	//mod := binary.LittleEndian.Uint16(data[5:7])
 	//serverID := binary.LittleEndian.Uint32(data[7:11])
 	h.FileName = string(data[11:])
-	log.Debugf("dump data pos:[%d] filename:[%s]", h.Pos, h.FileName)
+	if len(h.FileName) > 4 {
+		index := strings.Index(h.FileName, ".log")
+		h.FileName = h.FileName[:index+4]
+	}
+	log.Infof("dump data pos:[%d] filename:[%s]", h.Pos, h.FileName)
 
 	// TODO
 	var err error
@@ -159,9 +181,11 @@ func (h *MockHandler) HandleDump(data []byte) error {
 		sort.Strings(useFileInfos)
 		h.FileName = useFileInfos[0]
 		h.Pos = 4
+		h.NewFile = true
 	}
-	if h.Pos < 4 {
+	if h.Pos <= 4 {
 		h.Pos = 4
+		h.NewFile = true
 	}
 
 	filename := filepath.Join(masterCfg.Mysql.BinLogDir, h.FileName)
@@ -180,21 +204,24 @@ func (h *MockHandler) HandleDump(data []byte) error {
 
 func (h *MockHandler) HandleGetData() ([]byte, error) {
 	var (
-		eventHeader = new(replication.EventHeader)
-		hold        []byte
-		data        []byte
-		needLen     = replication.EventHeaderSize
-		n           int
-		err         error
+		needLen = replication.EventHeaderSize
+		n       int
+		err     error
 	)
 
+	if h.NewFile {
+		log.Infof("new file[%s] has been read", h.RedoLog.Name())
+		data := NewRotateEventData(h.RedoLog.Name(), false)
+		data = ChangePositionAndCheckSum(data, 0)
+		h.NewFile = false
+		log.Debugf("data: %+v", data)
+		return data, nil
+	}
+
 	// Header
-	hold = make([]byte, replication.EventHeaderSize)
 	for {
-		data = make([]byte, needLen)
-		n, err = h.RedoLog.Read(data)
+		n, err = h.RedoLog.Read(h.headerByte[len(h.headerByte)-needLen:])
 		if err == nil {
-			copy(hold[len(hold)-needLen:], data)
 			break
 		}
 
@@ -202,26 +229,28 @@ func (h *MockHandler) HandleGetData() ([]byte, error) {
 			return nil, err
 		}
 
-		copy(hold[len(hold)-needLen:], data)
 		needLen -= n
 		time.Sleep(time.Second)
 	}
 
-	err = eventHeader.Decode(hold)
+	err = h.eventHeader.Decode(h.headerByte)
 	if err != nil {
 		return nil, err
 	}
-	log.Debugf("header:%+v\n", eventHeader)
+	log.Debugf("header:%+v\n", h.eventHeader)
 
-	needLen = int(eventHeader.EventSize) - replication.EventHeaderSize
-	data = make([]byte, eventHeader.EventSize)
-	copy(data, hold)
-	hold = data
+	if int(h.eventHeader.EventSize) > len(h.dataByte) {
+		log.Infof("dataByte in handler %d --> %d", len(h.dataByte), h.eventHeader.EventSize)
+		log.Infof("obj %+v, data:%s", h.eventHeader, h.headerByte)
+		h.dataByte = make([]byte, h.eventHeader.EventSize)
+	}
+
+	hold := h.dataByte[:h.eventHeader.EventSize]
+	copy(hold, h.headerByte)
+	needLen = int(h.eventHeader.EventSize) - replication.EventHeaderSize
 	for {
-		data = make([]byte, needLen)
-		n, err = h.RedoLog.Read(data)
+		n, err = h.RedoLog.Read(hold[len(hold)-needLen:])
 		if err == nil {
-			copy(hold[len(hold)-needLen:], data)
 			break
 		}
 
@@ -229,14 +258,46 @@ func (h *MockHandler) HandleGetData() ([]byte, error) {
 			return nil, err
 		}
 
-		copy(hold[replication.EventHeaderSize-needLen:], data)
 		needLen -= n
 		time.Sleep(time.Second)
 	}
+
+	if h.eventHeader.EventType == replication.ROTATE_EVENT {
+		ev := new(replication.RotateEvent)
+		err = ev.Decode(hold[replication.EventHeaderSize : len(hold)-4])
+		if err != nil {
+			return nil, err
+		}
+
+		filename := filepath.Join(masterCfg.Mysql.BinLogDir, string(ev.NextLogName))
+		h.RedoLog, err = os.Open(filename)
+		if err != nil {
+			return nil, err
+		}
+
+		_, err = h.RedoLog.Seek(int64(ev.Position), 1)
+		if err != nil {
+			return nil, err
+		}
+		h.NewFile = true
+	}
+
+	err = CheckSum(hold)
+	if err != nil {
+		log.Errorf("checkSum failed. size:%d, header:%+v, data: %s, err:%s", len(hold), h.eventHeader, hold, err)
+		return nil, err
+	}
+	log.Debugf("file:%s head.Size %d data:%d", h.RedoLog.Name(), h.eventHeader.EventSize, len(hold))
 
 	return hold, nil
 }
 
 func (h *MockHandler) HandleRegisterSlave(data []byte) error {
 	return nil
+}
+
+func (h *MockHandler) Close() {
+	if h.RedoLog != nil {
+		_ = h.RedoLog.Close()
+	}
 }

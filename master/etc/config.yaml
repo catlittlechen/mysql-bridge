@@ -10,21 +10,27 @@ mysql:
     server_id: 18001
     server_version: 5.6.33-0ubuntu0.14.04.1-log (Ubuntu)
     binlog_dir: ./data/binlog
-    binlog_size: 104857600
+    binlog_size: 10485760
 
 kafka:
     broker_list:
         - 172.16.5.225:9092
     timeout: 1s
-    topic: mysql_test2
+    topic: mysql_test1
     offset_dir: ./data/offset
-    default_seq_id: 127
+    default_seq_id: 0
     ticker: 1s
-    ring_len: 102400
-    time_sleep: 10ms
+    ring_len: 500
+    time_sleep: 100ms
 
 mockargs:
     server_id: 18001
     server_uuid: 2857b32d-9e9a-11e7-a268-94de80cb4372
-    global.binlog_checksum: NONE
+    global.binlog_checksum: CRC32
     GLOBAL.GTID_MODE: "OFF"
+
+
+monitor:
+    host: 0.0.0.0
+    port: 10086
+    interval: 1

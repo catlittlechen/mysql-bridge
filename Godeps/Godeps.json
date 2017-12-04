@@ -8,14 +8,13 @@
 	],
 	"Deps": [
 		{
-			"ImportPath": "github.com/BurntSushi/toml",
-			"Comment": "v0.3.0-7-ga368813",
-			"Rev": "a368813c5e648fee92e5f6c30e3944ff9d5e8895"
+			"ImportPath": "github.com/DeanThompson/ginpprof",
+			"Rev": "0bc18f7fddb0f011fc24d13dfe5b6d9ebb1de655"
 		},
 		{
 			"ImportPath": "github.com/Shopify/sarama",
-			"Comment": "v1.10.1-122-gf7e3024",
-			"Rev": "f7e3024a61603647461f4b40bd8f3db88871bf9d"
+			"Comment": "v1.10.1-204-gb305748",
+			"Rev": "b305748200a6396c34b89fe5dacc768cb1a7ea69"
 		},
 		{
 			"ImportPath": "github.com/davecgh/go-spew/spew",
@@ -44,12 +43,39 @@
 			"Rev": "9f3a0116c9f72c5a56f958206a43dc881b502c37"
 		},
 		{
+			"ImportPath": "github.com/gin-gonic/gin",
+			"Comment": "v1.0rc1-304-ge2212d4",
+			"Rev": "e2212d40c62a98b388a5eb48ecbdcf88534688ba"
+		},
+		{
+			"ImportPath": "github.com/gin-gonic/gin/binding",
+			"Comment": "v1.0rc1-304-ge2212d4",
+			"Rev": "e2212d40c62a98b388a5eb48ecbdcf88534688ba"
+		},
+		{
+			"ImportPath": "github.com/gin-gonic/gin/render",
+			"Comment": "v1.0rc1-304-ge2212d4",
+			"Rev": "e2212d40c62a98b388a5eb48ecbdcf88534688ba"
+		},
+		{
+			"ImportPath": "github.com/golang/protobuf/proto",
+			"Rev": "2bc9827a78f95c6665b5fe0abd1fd66b496ae2d8"
+		},
+		{
 			"ImportPath": "github.com/golang/snappy",
 			"Rev": "ec642410cd033af63620b66a91ccbd3c69c2c59a"
 		},
 		{
 			"ImportPath": "github.com/juju/errors",
 			"Rev": "c7d06af17c68cd34c835053720b21f6549d9b0ee"
+		},
+		{
+			"ImportPath": "github.com/manucorporat/sse",
+			"Rev": "ee05b128a739a0fb76c7ebd3ae4810c1de808d6d"
+		},
+		{
+			"ImportPath": "github.com/mattn/go-isatty",
+			"Rev": "30a891c33c7cde7b02a981314b4228ec99380cca"
 		},
 		{
 			"ImportPath": "github.com/pierrec/lz4",
@@ -116,12 +142,21 @@
 			"Rev": "9419663f5a44be8b34ca85f08abc5fe1be11f8a3"
 		},
 		{
+			"ImportPath": "golang.org/x/net/context",
+			"Rev": "ddf80d0970594e2e4cccf5a98861cad3d9eaa4cd"
+		},
+		{
 			"ImportPath": "golang.org/x/sys/unix",
 			"Rev": "5eaf0df67e70d6997a9fe0ed24383fa1b01638d3"
 		},
 		{
 			"ImportPath": "golang.org/x/sys/windows",
 			"Rev": "5eaf0df67e70d6997a9fe0ed24383fa1b01638d3"
+		},
+		{
+			"ImportPath": "gopkg.in/go-playground/validator.v8",
+			"Comment": "v8.17.1",
+			"Rev": "014792cf3e266caff1e916876be12282b33059e0"
 		},
 		{
 			"ImportPath": "gopkg.in/yaml.v2",

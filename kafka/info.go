@@ -15,18 +15,20 @@ import (
 )
 
 type OffsetInfo struct {
-	sync.RWMutex
+	sync.Mutex `yaml:"-"`
 
-	PartitionOffset map[int32]int64 `toml:"PartitionOffset"`
-	SequenceID      uint64          `toml:"sequenceid"`
+	PartitionOffset map[int32]int64 `yaml:"PartitionOffset"`
+	SequenceID      uint64          `yaml:"sequenceid"`
+	//QueueMap        map[int32]*SQueue `yaml:"-"`
 
-	filePath     string
-	lastSaveTime time.Time
+	filePath     string    `yaml:"-"`
+	lastSaveTime time.Time `yaml:"-"`
 }
 
 func loadOffsetInfo(dataDir string, ticker time.Duration) (*OffsetInfo, error) {
 	var m OffsetInfo
 	m.PartitionOffset = make(map[int32]int64)
+	//m.QueueMap = make(map[int32]*SQueue)
 
 	if len(dataDir) == 0 {
 		return &m, nil
@@ -34,7 +36,7 @@ func loadOffsetInfo(dataDir string, ticker time.Duration) (*OffsetInfo, error) {
 
 	m.filePath = path.Join(dataDir, "offset.info")
 	m.lastSaveTime = time.Now()
-	log.Debugf("filePath: %s lastSaveTime:%d", m.filePath, m.lastSaveTime)
+	log.Infof("filePath: %s lastSaveTime:%d", m.filePath, m.lastSaveTime)
 
 	if err := os.MkdirAll(dataDir, 0755); err != nil {
 		return nil, err
@@ -52,12 +54,18 @@ func loadOffsetInfo(dataDir string, ticker time.Duration) (*OffsetInfo, error) {
 		}
 	}
 
+	//for key, value := range m.PartitionOffset {
+	//	m.QueueMap[key] = InitSQueue(value)
+	//}
+
 	go func() {
 		// Save binlog pos
-		log.Info("save binlog pos ticker:%d", ticker)
+		log.Infof("save binlog pos ticker:%d", ticker)
 		ticker := time.Tick(ticker)
 		for range ticker {
-			log.Infof("%+v\n", m.PartitionOffset)
+			if time.Now().Unix()%60 == 0 {
+				log.Infof("offset info %+v\n", m.PartitionOffset)
+			}
 			err := m.Save()
 			if err != nil {
 				log.Errorf("OffsetInfo save failed. err:%s", err)
@@ -76,12 +84,6 @@ func (m *OffsetInfo) Save() error {
 		return nil
 	}
 
-	n := time.Now()
-	if n.Sub(m.lastSaveTime) < time.Second {
-		return nil
-	}
-
-	m.lastSaveTime = n
 	data, err := yaml.Marshal(m)
 	if err != nil {
 		return err
@@ -89,9 +91,36 @@ func (m *OffsetInfo) Save() error {
 
 	if err = ioutil2.WriteFileAtomic(m.filePath, data, 0644); err != nil {
 		log.Errorf("canal save master info to file %s err %v", m.filePath, err)
+		return err
 	}
 
-	return err
+	log.Infof("offset save success. m:%+v", m)
+	return nil
+}
+
+func (m *OffsetInfo) Info() []byte {
+	m.Lock()
+	defer m.Unlock()
+
+	data, err := yaml.Marshal(m)
+	if err != nil {
+		return nil
+	}
+
+	return data
+}
+
+func (m *OffsetInfo) Set(seqID uint64, pid int32, offset int64) {
+	m.Lock()
+	defer m.Unlock()
+
+	m.SequenceID = seqID
+	m.PartitionOffset[pid] = offset
+	//saveOffset, ok := m.QueueMap[pid].Do(offset)
+	//if ok {
+	//	m.PartitionOffset[pid] = saveOffset
+	//}
+	return
 }
 
 func (m *OffsetInfo) Close() error {

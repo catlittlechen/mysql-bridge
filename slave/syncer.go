@@ -1,20 +1,25 @@
+// Copyright 2017
 // Author: chenkai@youmi.net
+//         huangjunwei@youmi.net
+
 package main
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"git.umlife.net/backend/mysql-bridge/global"
+	"github.com/siddontang/go-mysql/mysql"
 	"github.com/siddontang/go-mysql/replication"
 	log "github.com/sirupsen/logrus"
 )
 
+// Syncer 读取MySQL binlog，写入Kafka
 type Syncer struct {
-	syncer *replication.BinlogSyncer
-	info   *masterInfo
-	closed bool
+	syncer     *replication.BinlogSyncer
+	info       *masterInfo
+	closed     bool
+	runChannel chan bool
 }
 
 func NewSyncer(info *masterInfo) *Syncer {
@@ -27,56 +32,65 @@ func NewSyncer(info *masterInfo) *Syncer {
 		Port:     slaveCfg.Mysql.Port,
 		User:     slaveCfg.Mysql.User,
 		Password: slaveCfg.Mysql.Password,
+		Charset:  mysql.DEFAULT_CHARSET,
 	}
 
 	return &Syncer{
-		syncer: replication.NewBinlogSyncer(cfg),
-		info:   info,
-		closed: false,
+		syncer:     replication.NewBinlogSyncer(cfg),
+		info:       info,
+		closed:     false,
+		runChannel: make(chan bool, 1),
 	}
 }
 
-func (s *Syncer) Run() (err error) {
+func (syncer *Syncer) Run() (err error) {
+	defer func() {
+		syncer.runChannel <- true
+	}()
 	// Start sync with sepcified binlog file and position
 	var streamer *replication.BinlogStreamer
-	streamer, err = s.syncer.StartSync(s.info.Position())
+	streamer, err = syncer.syncer.StartSync(syncer.info.Position())
 	if err != nil {
-		log.Errorf("syner start failed. err:%s", err)
-		return
+		return err
 	}
 
 	var (
 		event *replication.BinlogEvent
 
 		transaction [][]byte
-		shouldWrite bool
+		size        int
 
-		preTransaction [][]byte
-		shouldWritePre bool
+		shouldWrite      bool
+		splitTransaction bool
 
 		// master binlog info
-		name = s.info.Name
+		name = syncer.info.Name
 	)
 
 	for {
-		if s.closed {
+		if syncer.closed {
 			return
 		}
 		event, err = streamer.GetEvent(context.Background())
 		if err != nil {
-			log.Errorf("streamer getEvent failed. err:%s", err)
+			log.Errorf("Streamer GetEvent failed. err: %s", err.Error())
 			return
 		}
+		GlobalMonitor.AddCount()
+		GlobalMonitor.SetTimeStamp(event.Header.Timestamp)
 
 		switch event.Header.EventType {
 		case replication.QUERY_EVENT:
 			qe := event.Event.(*replication.QueryEvent)
-			if strings.EqualFold(strings.ToUpper(string(qe.Query)), "BEGIN") || transaction != nil {
+			if strings.EqualFold(strings.ToUpper(string(qe.Query)), "BEGIN") || transaction != nil || splitTransaction {
 				transaction = append(transaction, event.RawData)
-			} else {
-				err = s.record([][]byte{event.RawData}, name, event.Header.LogPos, true)
+				size += len(event.RawData)
+
+			} else if _, ok := slaveCfg.Table.RepMap[strings.ToLower(string(qe.Schema))]; ok {
+				// DML语句
+				err = syncer.record([][]byte{event.RawData}, name, event.Header.LogPos)
 				if err != nil {
-					log.Errorf("syncer record failed. err: %s", err)
+					log.Errorf("syncer record failed. binlog: %s, pos: %d, eventType: %s, err: %s", name, event.Header.LogPos, event.Header.EventType.String(), err.Error())
 					return
 				}
 			}
@@ -84,73 +98,71 @@ func (s *Syncer) Run() (err error) {
 			shouldWrite = false
 			te := event.Event.(*replication.TableMapEvent)
 			if _, ok := slaveCfg.Table.RepMap[strings.ToLower(string(te.Schema))]; ok {
-				if slaveCfg.Table.RepMap[strings.ToLower(string(te.Schema))][strings.ToLower(string(te.Table))] {
-					transaction = append(transaction, event.RawData)
-					shouldWrite = true
-				}
-			}
-			if _, ok := slaveCfg.Table.PreMap[strings.ToLower(string(te.Schema))]; ok {
-				if slaveCfg.Table.PreMap[strings.ToLower(string(te.Schema))][strings.ToLower(string(te.Table))] {
-					if preTransaction == nil {
-						preTransaction = append(preTransaction, transaction[0], event.RawData)
-						shouldWritePre = true
+				table := strings.ToLower(string(te.Table))
+				for _, re := range slaveCfg.Table.RepMap[strings.ToLower(string(te.Schema))] {
+					if re.MatchString(table) {
+						transaction = append(transaction, event.RawData)
+						size += len(event.RawData)
+						shouldWrite = true
+						break
 					}
 				}
 			}
 		case replication.XID_EVENT:
 			// deal with commit, pop kafka
-			if transaction != nil && len(transaction) != 1 {
+			if (transaction != nil && len(transaction) != 1) || splitTransaction {
 				transaction = append(transaction, event.RawData)
-				err = s.record(transaction, name, event.Header.LogPos, true)
+				size += len(event.RawData)
+				err = syncer.record(transaction, name, event.Header.LogPos)
 				if err != nil {
-					log.Errorf("syncer record failed. err: %s", err)
-					return
-				}
-			}
-
-			if preTransaction != nil && len(preTransaction) != 1 {
-				preTransaction = append(preTransaction, event.RawData)
-				err = s.record(preTransaction, name, event.Header.LogPos, false)
-				if err != nil {
-					log.Errorf("syncer record failed. err:%s", err)
+					log.Errorf("syncer record failed. binlog: %s, pos: %d, eventType: %s, err: %s", name, event.Header.LogPos, event.Header.EventType.String(), err.Error())
 					return
 				}
 			}
 
 			transaction = nil
+			size = 0
 			shouldWrite = false
-			preTransaction = nil
-			shouldWrite = false
+			splitTransaction = false
 
 		case replication.ROTATE_EVENT:
 			name = string(event.Event.(*replication.RotateEvent).NextLogName)
 		case replication.FORMAT_DESCRIPTION_EVENT:
 			// ignore
 		default:
-			if transaction == nil && preTransaction == nil {
-				err = s.record(transaction, name, event.Header.LogPos, true)
+			if transaction == nil && !splitTransaction {
+				err = syncer.record([][]byte{event.RawData}, name, event.Header.LogPos)
 				if err != nil {
-					fmt.Println("syncer record failed. err:%s", err)
+					log.Errorf("syncer record failed. binlog: %s, pos: %d, eventType: %s, err: %s", name, event.Header.LogPos, event.Header.EventType.String(), err.Error())
 					return
 				}
 			} else if shouldWrite {
 				transaction = append(transaction, event.RawData)
-			} else if shouldWritePre {
-				preTransaction = append(preTransaction, event.RawData)
+				size += len(event.RawData)
+				if size > slaveCfg.Table.MaxSize {
+					err = syncer.record(transaction, name, event.Header.LogPos)
+					if err != nil {
+						log.Errorf("syncer record failed. binlog: %s, pos: %d, eventType: %s, err: %s", name, event.Header.LogPos, event.Header.EventType.String(), err.Error())
+						return
+					}
+					transaction = nil
+					size = 0
+					splitTransaction = true
+				}
 			}
 		}
-
 	}
+
 	return
 }
 
-func (s *Syncer) record(dataList [][]byte, name string, pos uint32, master bool) (err error) {
+func (s *Syncer) record(dataList [][]byte, name string, pos uint32) (err error) {
 
 	var (
 		seqID uint64
 		b     []byte
 	)
-	seqID, err = GetSeqID(master)
+	seqID, err = GetSeqID()
 	if err != nil {
 		log.Errorf("getSeqID failed. err:%s", err)
 		return
@@ -164,16 +176,14 @@ func (s *Syncer) record(dataList [][]byte, name string, pos uint32, master bool)
 	}
 
 	topic := slaveCfg.Table.ReplicationTopic
-	if !master {
-		topic = slaveCfg.Table.PreparTopic
-	}
 
 	err = kproducer.Send(topic, b)
 	if err != nil {
 		log.Errorf("kafka producer send failed. err:%s", err)
-		err = DescSeqID(master)
-		if err != nil {
-			panic(err)
+		derr := DescSeqID()
+		if derr != nil {
+			// not panic, but alerover
+			panic(derr)
 		}
 		return
 	}
@@ -187,7 +197,9 @@ func (s *Syncer) Close() {
 	if s.closed {
 		return
 	}
-	s.syncer.Close()
 	s.closed = true
+	s.syncer.Close()
+	<-s.runChannel
+	log.Infof("syncer close success..")
 	return
 }

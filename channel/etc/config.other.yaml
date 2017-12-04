@@ -1,0 +1,35 @@
+log_config: ./etc/logrus.yaml
+
+source_type: 2
+source_kafka:
+    broker_list:
+        - 172.16.5.225:9092
+    timeout: 1s
+    topic: mysql_test
+    offset_dir: ./data/offset
+    default_seq_id: 0
+    ticker: 1s
+    ring_len: 500
+    time_sleep: 100ms
+source_kafka_ext:
+    max_count: 10
+    max_size: 655360
+    max_idel_time: 1s
+    fail_sleep: 1s
+    default_topic: mysql_test1
+
+sink_type: 1
+sink_tcp:
+    address: 127.0.0.1:17173
+    idle_timeout: 10s
+    read_timeout: 1s
+    write_timeout: 10s
+broadcast_sink_tcp:
+    #- address: 127.0.0.1:17174
+    #  idle_timeout: 10s
+    #  read_timeout: 1s
+    #  write_timeout: 10s
+    #- address: 127.0.0.1:17175
+    #  idle_timeout: 10s
+    #  read_timeout: 1s
+    #  write_timeout: 10s

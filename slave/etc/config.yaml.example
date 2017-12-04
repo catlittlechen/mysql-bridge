@@ -1,0 +1,33 @@
+log_config: etc/logrus.yaml.example
+
+info_dir: data/info
+
+server_id: 10086
+
+second: 1s
+
+mysql:
+    host: 127.0.0.1
+    port: 3306
+    user: root
+    password: 1232123
+
+redis:
+    host: 127.0.0.1:6379
+    db: 0
+
+kafka:
+    broker_list:
+        - 127.0.0.1:9092
+    flush_time: 1s
+
+table:
+    replication_topic: mysql_test
+    replication:
+        - mysql_slave_test@a*
+    max_size: 65536
+
+monitor:
+    host: 0.0.0.0
+    port: 10086
+    interval: 1

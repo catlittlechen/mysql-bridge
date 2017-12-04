@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"runtime/debug"
 	"strconv"
 	"syscall"
 
@@ -19,10 +20,18 @@ import (
 var (
 	config    = flag.String("c", "./etc/config.yaml", "config")
 	kconsumer *kafka.KafkaConsumer
+	errorChan = make(chan bool)
+
+	showVersion          = flag.Bool("version", false, "显示当前版本")
+	gitBranch, gitCommit string
 )
 
 func main() {
 	flag.Parse()
+	if *showVersion {
+		fmt.Printf("Version: %s\nBranch: %s\nCommit: %s\n", VERSION, gitBranch, gitCommit)
+		return
+	}
 
 	err := ParseConfigFile(*config)
 	if err != nil {
@@ -32,8 +41,10 @@ func main() {
 	fmt.Printf("config: %+v\n", masterCfg)
 
 	// init log
-	log.SetLevel(log.InfoLevel)
 	logs.ConfiglogrusrusWithFile(masterCfg.Logconf)
+
+	// init monitor
+	InitMonitorWithConfig(masterCfg.Monitor)
 
 	// init kafka
 	kconsumer, err = kafka.NewKafkaConsumer(masterCfg.Kafka)
@@ -44,12 +55,20 @@ func main() {
 	log.Info("new kafka conusmer success")
 	defer kconsumer.Close()
 
-	binLogWriter := new(BinLogWriter)
+	binLogWriter := NewBinLogWriter()
 	// init binlog
 	go func() {
+		defer func() {
+			rerr := recover()
+			if rerr != nil {
+				log.Errorf(string(debug.Stack()))
+				errorChan <- true
+			}
+		}()
 		err := binLogWriter.WriteBinlog()
 		if err != nil {
-			panic("write binlog failed. err:" + err.Error())
+			log.Errorf("write binlog failed. err:" + err.Error())
+			errorChan <- true
 		}
 		return
 	}()
@@ -61,27 +80,45 @@ func main() {
 	}
 	log.Info("listen success")
 
-	mock := new(MockHandler)
-	mock.Args = masterCfg.MockArgs
-
 	go func() {
+		defer func() {
+			rerr := recover()
+			if rerr != nil {
+				log.Errorf(string(debug.Stack()))
+				errorChan <- true
+			}
+		}()
 		for {
 			c, err := l.Accept()
 			if err != nil {
 				log.Errorf("listen accept failed. err:%s", err)
+				errorChan <- true
 				return
 			}
+
+			mock := NewMockHandler(masterCfg.MockArgs)
 
 			// Create a connection with user root and an empty passowrd
 			// We only an empty handler to handle command too
 			conn, err := server.NewConn(c, masterCfg.Mysql.User, masterCfg.Mysql.Password, mock)
 			if err != nil {
 				log.Errorf("server newConn failed. err:%s", err)
+				errorChan <- true
 				return
 			}
 			log.Info("server newConn success")
+			GlobalMonitor.AddSlave()
 
 			go func() {
+				defer GlobalMonitor.RemoveSlave()
+				defer mock.Close()
+				defer func() {
+					rerr := recover()
+					if rerr != nil {
+						log.Errorf(string(debug.Stack()))
+						errorChan <- true
+					}
+				}()
 				for {
 					err := conn.HandleCommand()
 					if err != nil {
@@ -96,6 +133,7 @@ func main() {
 	defer func() {
 		kconsumer.Close()
 		binLogWriter.Close()
+		kconsumer.Save()
 	}()
 
 	// Deal with signal
@@ -105,10 +143,16 @@ func main() {
 		syscall.SIGTERM,
 		syscall.SIGQUIT)
 
-	<-sc
+	select {
+	case <-sc:
+	case <-errorChan:
+	case kerr := <-kconsumer.Error():
+		log.Errorf("kconsumer err:%s", kerr)
+	}
 
 	kconsumer.Close()
 	binLogWriter.Close()
+	kconsumer.Save()
 
 	return
 }

@@ -16,7 +16,7 @@ import (
 )
 
 type masterInfo struct {
-	sync.RWMutex
+	sync.RWMutex `yaml:"-"`
 
 	Name string `yaml:"bin_name"`
 	Pos  uint32 `yaml:"bin_pos"`
@@ -58,11 +58,11 @@ func loadMasterInfo(dataDir string) (*masterInfo, error) {
 		for range ticker {
 			mp := m.Position()
 			if time.Now().Unix()%60 == 0 {
-				log.Infof("%+v\n", mp)
+				log.Infof("Current position: %+v", mp)
 			}
 			err := m.Save(mp)
 			if err != nil {
-				log.Errorf("masterInfo save failed. err:%s", err)
+				log.Errorf("masterInfo save failed. err: %s", err.Error())
 			}
 		}
 	}()
@@ -71,8 +71,8 @@ func loadMasterInfo(dataDir string) (*masterInfo, error) {
 }
 
 func (m *masterInfo) Save(pos mysql.Position) error {
-	m.Lock()
-	defer m.Unlock()
+	m.RLock()
+	defer m.RUnlock()
 
 	m.Name = pos.Name
 	m.Pos = pos.Pos
@@ -80,13 +80,6 @@ func (m *masterInfo) Save(pos mysql.Position) error {
 	if len(m.filePath) == 0 {
 		return nil
 	}
-
-	n := time.Now()
-	if n.Sub(m.lastSaveTime) < time.Second {
-		return nil
-	}
-
-	m.lastSaveTime = n
 
 	data, err := yaml.Marshal(m)
 	if err != nil {
@@ -109,8 +102,14 @@ func (m *masterInfo) Position() mysql.Position {
 	}
 }
 
+// Close .
 func (m *masterInfo) Close() error {
 	pos := m.Position()
 
-	return m.Save(pos)
+	err := m.Save(pos)
+	if err != nil {
+		return err
+	}
+	log.Info("masterInfo save success")
+	return nil
 }

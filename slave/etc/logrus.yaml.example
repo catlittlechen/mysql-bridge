@@ -1,0 +1,10 @@
+enable_stdout: true
+disable_color: false
+
+paths:
+    panic: ""
+    fatal: ""
+    error: "log/error.log"
+    warn:  ""
+    info:  "log/info.log"
+    debug: "log/info.log"

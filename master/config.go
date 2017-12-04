@@ -19,6 +19,7 @@ type Config struct {
 	Mysql    MysqlConfig               `yaml:"mysql"`
 	Kafka    kafka.KafkaConsumerConfig `yaml:"kafka"`
 	MockArgs map[string]interface{}    `yaml:"mockargs"`
+	Monitor  MonitorConfig             `yaml:"monitor"`
 }
 
 type MysqlConfig struct {
@@ -31,6 +32,12 @@ type MysqlConfig struct {
 
 	BinLogDir  string `yaml:"binlog_dir"`
 	BinLogSize int64  `yaml:"binlog_size"`
+}
+
+type MonitorConfig struct {
+	Host     string `yaml:"host"`
+	Port     uint16 `yaml:"port"`
+	Interval int    `yaml:"interval"`
 }
 
 func ParseConfigFile(filepath string) error {

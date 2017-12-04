@@ -13,8 +13,9 @@ import (
 
 // logrusConfig logrus配置结构体(查看logrusrus.sample.yaml)
 type logrusConfig struct {
-	EnableStdout bool `yaml:"enable_stdout"`
-	DisableColor bool `yaml:"disable_color"`
+	EnableStdout bool   `yaml:"enable_stdout"`
+	DisableColor bool   `yaml:"disable_color"`
+	LogLevel     string `yaml:"log_level"`
 	Paths        struct {
 		Panic string `yaml:"panic"`
 		Fatal string `yaml:"fatal"`
@@ -61,6 +62,21 @@ func configlogrusPath(config *logrusConfig) {
 	logrus.Info("Level Error logrus file: ", pathMap[logrus.ErrorLevel])
 	logrus.Info("Level Fatal logrus file: ", pathMap[logrus.FatalLevel])
 	logrus.Info("Level Panic logrus file: ", pathMap[logrus.PanicLevel])
+
+	switch config.LogLevel {
+	case "panic":
+		logrus.SetLevel(logrus.PanicLevel)
+	case "fatal":
+		logrus.SetLevel(logrus.FatalLevel)
+	case "error":
+		logrus.SetLevel(logrus.ErrorLevel)
+	case "warn":
+		logrus.SetLevel(logrus.WarnLevel)
+	case "info":
+		logrus.SetLevel(logrus.InfoLevel)
+	case "debug":
+		logrus.SetLevel(logrus.DebugLevel)
+	}
 }
 
 // Configlogrusrus 根据传入的logrusConfig初始化logrusrus
@@ -88,6 +104,10 @@ func ConfiglogrusrusWithFile(path string) {
 
 	if config.DisableColor {
 		logrus.SetFormatter(&NoColorTextFormatter{})
+	}
+
+	if config.LogLevel == "" {
+		config.LogLevel = "info"
 	}
 	Configlogrusrus(&config)
 }

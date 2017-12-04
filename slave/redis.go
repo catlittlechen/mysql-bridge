@@ -43,7 +43,6 @@ var redisPool *redis.Pool
 
 const (
 	redisMasterSeqKey = "master_binlog_seqid"
-	redisPreparSeqKey = "prepar_binlog_seqid"
 )
 
 func InitRedis() error {
@@ -51,17 +50,16 @@ func InitRedis() error {
 	return nil
 }
 
-// TODO 没有容错性
-func GetSeqID(master bool) (uint64, error) {
+// TODO 如果独立部署这部分的逻辑做成分发器，可以开发出随意添加同步表的功能
+func GetSeqID() (uint64, error) {
+	// TODO 做成事务
+
 	conn := redisPool.Get()
 	defer func() {
 		_ = conn.Close()
 	}()
 
 	key := redisMasterSeqKey
-	if !master {
-		key = redisPreparSeqKey
-	}
 
 	value, err := redis.Uint64(conn.Do("INCRBY", key, 1))
 	if err != nil {
@@ -70,6 +68,8 @@ func GetSeqID(master bool) (uint64, error) {
 
 	if value > global.MaxSeqID {
 		value = global.MinSeqID
+	} else {
+		return value, nil
 	}
 
 	_, err = conn.Do("SET", key, value)
@@ -80,25 +80,23 @@ func GetSeqID(master bool) (uint64, error) {
 	return value, nil
 }
 
-func DescSeqID(master bool) error {
+func DescSeqID() error {
 	conn := redisPool.Get()
 	defer func() {
 		_ = conn.Close()
 	}()
 
 	key := redisMasterSeqKey
-	if !master {
-		key = redisPreparSeqKey
-	}
 
-	value, err := redis.Uint64(conn.Do("GET", key))
+	value, err := redis.Uint64(conn.Do("INCRBY", key, -1))
 	if err != nil {
 		return err
 	}
 
-	value--
 	if value < global.MinSeqID {
 		value = global.MaxSeqID
+	} else {
+		return nil
 	}
 
 	_, err = conn.Do("SET", key, value)

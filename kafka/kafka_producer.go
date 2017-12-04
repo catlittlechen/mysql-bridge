@@ -3,6 +3,7 @@ package kafka
 import (
 	"github.com/Shopify/sarama"
 	"github.com/satori/go.uuid"
+	log "github.com/sirupsen/logrus"
 )
 
 // KafkaProducer .
@@ -19,6 +20,8 @@ func NewKafkaProducer(config KafkaProducerConfig) (*KafkaProducer, error) {
 	cfg.Producer.RequiredAcks = sarama.WaitForAll
 	cfg.Producer.Return.Successes = true
 	cfg.Producer.Return.Errors = true
+	cfg.Producer.Partitioner = NewDefaultPartitioner
+	cfg.Version = sarama.V0_11_0_0
 
 	var err error
 	client := new(KafkaProducer)
@@ -36,7 +39,18 @@ func NewKafkaProducer(config KafkaProducerConfig) (*KafkaProducer, error) {
 func (k *KafkaProducer) Send(topic string, data []byte) (err error) {
 	msg := &sarama.ProducerMessage{
 		Topic: topic,
-		Key:   sarama.ByteEncoder(uuid.NewV4().Bytes()),
+		Key:   sarama.StringEncoder(uuid.NewV4().String()),
+		Value: sarama.ByteEncoder(data),
+	}
+	_, _, err = k.p.SendMessage(msg)
+	return
+}
+
+// Send 发送信息到指定的topic
+func (k *KafkaProducer) SendWithKey(topic string, key string, data []byte) (err error) {
+	msg := &sarama.ProducerMessage{
+		Topic: topic,
+		Key:   sarama.StringEncoder(key),
 		Value: sarama.ByteEncoder(data),
 	}
 	_, _, err = k.p.SendMessage(msg)
@@ -46,5 +60,10 @@ func (k *KafkaProducer) Send(topic string, data []byte) (err error) {
 // Close .
 func (k *KafkaProducer) Close() error {
 	k.closed = true
-	return k.p.Close()
+	err := k.p.Close()
+	if err != nil {
+		return err
+	}
+	log.Info("KafkaProducer close success")
+	return nil
 }

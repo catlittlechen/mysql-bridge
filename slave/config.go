@@ -3,6 +3,7 @@ package main
 
 import (
 	"errors"
+	"regexp"
 	"strings"
 	"time"
 
@@ -10,9 +11,11 @@ import (
 	"git.umlife.net/backend/mysql-bridge/kafka"
 )
 
-var slaveCfg Config
+var (
+	slaveCfg Config
+)
 
-// Config
+// Config 主配置
 type Config struct {
 	Logconf  string                    `yaml:"log_config"`
 	InfoDir  string                    `yaml:"info_dir"`
@@ -22,6 +25,7 @@ type Config struct {
 	Redis    RedisConfig               `yaml:"redis"`
 	Kafka    kafka.KafkaProducerConfig `yaml:"kafka"`
 	Table    TableConfig               `yaml:"table"`
+	Monitor  MonitorConfig             `yaml:"monitor"`
 }
 
 type MysqlConfig struct {
@@ -40,11 +44,15 @@ type RedisConfig struct {
 type TableConfig struct {
 	ReplicationTopic string   `yaml:"replication_topic"`
 	Replication      []string `yaml:"replication"`
-	PreparTopic      string   `yaml:"prepar_topic"`
-	Prepar           []string `yaml:"prepar"`
+	MaxSize          int      `yaml:"max_size"`
 
-	RepMap map[string]map[string]bool `yaml:"-"`
-	PreMap map[string]map[string]bool `yaml:"-"`
+	RepMap map[string][]*regexp.Regexp `yaml:"-"`
+}
+
+type MonitorConfig struct {
+	Host     string `yaml:"host"`
+	Port     uint16 `yaml:"port"`
+	Interval int    `yaml:"interval"`
 }
 
 func ParseConfigFile(filepath string) error {
@@ -53,21 +61,8 @@ func ParseConfigFile(filepath string) error {
 		return err
 	}
 
-	slaveCfg.Table.PreMap = make(map[string]map[string]bool)
-	slaveCfg.Table.RepMap = make(map[string]map[string]bool)
+	slaveCfg.Table.RepMap = make(map[string][]*regexp.Regexp)
 	var database, table string
-	for _, str := range slaveCfg.Table.Prepar {
-		array := strings.Split(str, "@")
-		if len(array) != 2 {
-			return errors.New("the format of prepar shoud be database@table")
-		}
-		database = array[0]
-		table = array[1]
-		if _, ok := slaveCfg.Table.PreMap[database]; !ok {
-			slaveCfg.Table.PreMap[database] = make(map[string]bool)
-		}
-		slaveCfg.Table.PreMap[database][table] = true
-	}
 	for _, str := range slaveCfg.Table.Replication {
 		array := strings.Split(str, "@")
 		if len(array) != 2 {
@@ -76,9 +71,9 @@ func ParseConfigFile(filepath string) error {
 		database = array[0]
 		table = array[1]
 		if _, ok := slaveCfg.Table.RepMap[database]; !ok {
-			slaveCfg.Table.RepMap[database] = make(map[string]bool)
+			slaveCfg.Table.RepMap[database] = make([]*regexp.Regexp, 0)
 		}
-		slaveCfg.Table.RepMap[database][table] = true
+		slaveCfg.Table.RepMap[database] = append(slaveCfg.Table.RepMap[database], regexp.MustCompile(table))
 	}
 
 	return nil
