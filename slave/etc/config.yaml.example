@@ -11,6 +11,7 @@ mysql:
       port: 3306
       user: root
       password: 1232123
+      info_file_name: master.info
       target_kafka_topic: test1
 
 redis:
