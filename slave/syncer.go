@@ -7,6 +7,7 @@ package main
 import (
 	"context"
 	"strings"
+	"sync"
 
 	"git.umlife.net/backend/mysql-bridge/global"
 	"github.com/siddontang/go-mysql/mysql"
@@ -14,33 +15,46 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+var (
+	syncerMutex = new(sync.Mutex)
+)
+
 // Syncer 读取MySQL binlog，写入Kafka
 type Syncer struct {
 	syncer     *replication.BinlogSyncer
 	info       *masterInfo
+	topic      string
 	closed     bool
 	runChannel chan bool
 }
 
-func NewSyncer(info *masterInfo) *Syncer {
+func NewSyncer(mysqlConfig *MysqlConfig) (*Syncer, error) {
+	// Load master mysql binlog info from file
+	info, err := loadMasterInfo(slaveCfg.InfoDir, mysqlConfig.InfoFileName)
+	if err != nil {
+		log.Errorf("loadMasterInfo failed. err: %s", err.Error())
+		return nil, err
+	}
+
 	// Create a binlog syncer with a unique server id, the server id must be different from other MySQL's.
 	// flavor is mysql or mariadb
 	cfg := replication.BinlogSyncerConfig{
 		ServerID: slaveCfg.ServerID,
 		Flavor:   "mysql",
-		Host:     slaveCfg.Mysql.Host,
-		Port:     slaveCfg.Mysql.Port,
-		User:     slaveCfg.Mysql.User,
-		Password: slaveCfg.Mysql.Password,
+		Host:     mysqlConfig.Host,
+		Port:     mysqlConfig.Port,
+		User:     mysqlConfig.User,
+		Password: mysqlConfig.Password,
 		Charset:  mysql.DEFAULT_CHARSET,
 	}
 
 	return &Syncer{
 		syncer:     replication.NewBinlogSyncer(cfg),
 		info:       info,
+		topic:      mysqlConfig.TargetkafkaTopic,
 		closed:     false,
 		runChannel: make(chan bool, 1),
-	}
+	}, nil
 }
 
 func (syncer *Syncer) Run() (err error) {
@@ -157,6 +171,8 @@ func (syncer *Syncer) Run() (err error) {
 }
 
 func (s *Syncer) record(dataList [][]byte, name string, pos uint32) (err error) {
+	syncerMutex.Lock()
+	defer syncerMutex.Unlock()
 
 	var (
 		seqID uint64
@@ -175,9 +191,7 @@ func (s *Syncer) record(dataList [][]byte, name string, pos uint32) (err error) 
 		return
 	}
 
-	topic := slaveCfg.Table.ReplicationTopic
-
-	err = kproducer.Send(topic, b)
+	err = kproducer.Send(s.topic, b)
 	if err != nil {
 		log.Errorf("kafka producer send failed. err:%s", err)
 		derr := DescSeqID()
@@ -202,4 +216,11 @@ func (s *Syncer) Close() {
 	<-s.runChannel
 	log.Infof("syncer close success..")
 	return
+}
+
+func (s *Syncer) Save() error {
+	if s.info != nil {
+		return s.info.Close()
+	}
+	return nil
 }

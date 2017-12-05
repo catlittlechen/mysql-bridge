@@ -25,14 +25,14 @@ type masterInfo struct {
 	lastSaveTime time.Time
 }
 
-func loadMasterInfo(dataDir string) (*masterInfo, error) {
+func loadMasterInfo(dataDir, filename string) (*masterInfo, error) {
 	var m masterInfo
 
 	if len(dataDir) == 0 {
 		return &m, nil
 	}
 
-	m.filePath = path.Join(dataDir, "master.info")
+	m.filePath = path.Join(dataDir, filename)
 	m.lastSaveTime = time.Now()
 
 	if err := os.MkdirAll(dataDir, 0755); err != nil {

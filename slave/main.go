@@ -58,30 +58,31 @@ func main() {
 		return
 	}
 
-	// Load master mysql binlog info from file
-	info, err := loadMasterInfo(slaveCfg.InfoDir)
-	if err != nil {
-		log.Errorf("loadMasterInfo failed. err: %s", err.Error())
-		return
-	}
-
 	// Init syncer
-	syncer := NewSyncer(info)
-	go func() {
-		defer func() {
-			rerr := recover()
-			if rerr != nil {
-				log.Errorf(string(debug.Stack()))
-				errorChan <- true
-			}
-		}()
-		serr := syncer.Run()
-		if serr != nil {
-			log.Errorf("syncer run failed. err: %s", serr.Error())
-			errorChan <- true
+	var syncerList []*Syncer
+	for _, mysqlConfig := range slaveCfg.Mysql {
+		syncer, err := NewSyncer(&mysqlConfig)
+		if err != nil {
+			log.Errorf("new syncer failed. err:%s", err.Error())
 			return
 		}
-	}()
+		syncerList = append(syncerList, syncer)
+		go func() {
+			defer func() {
+				rerr := recover()
+				if rerr != nil {
+					log.Errorf(string(debug.Stack()))
+					errorChan <- true
+				}
+			}()
+			serr := syncer.Run()
+			if serr != nil {
+				log.Errorf("syncer run failed. err: %s", serr.Error())
+				errorChan <- true
+				return
+			}
+		}()
+	}
 
 	// Deal with signal
 	sc := make(chan os.Signal, 1)
@@ -95,9 +96,13 @@ func main() {
 	case <-errorChan:
 	}
 
-	syncer.Close()
+	for _, syncer := range syncerList {
+		syncer.Close()
+	}
 	_ = kproducer.Close()
-	_ = info.Close()
+	for _, syncer := range syncerList {
+		_ = syncer.Save()
+	}
 
 	return
 }
