@@ -23,6 +23,7 @@ var (
 type Syncer struct {
 	syncer     *replication.BinlogSyncer
 	info       *masterInfo
+	topic      string
 	closed     bool
 	runChannel chan bool
 }
@@ -50,6 +51,7 @@ func NewSyncer(mysqlConfig *MysqlConfig) (*Syncer, error) {
 	return &Syncer{
 		syncer:     replication.NewBinlogSyncer(cfg),
 		info:       info,
+		topic:      mysqlConfig.TargetkafkaTopic,
 		closed:     false,
 		runChannel: make(chan bool, 1),
 	}, nil
@@ -189,9 +191,7 @@ func (s *Syncer) record(dataList [][]byte, name string, pos uint32) (err error) 
 		return
 	}
 
-	topic := slaveCfg.Table.ReplicationTopic
-
-	err = kproducer.Send(topic, b)
+	err = kproducer.Send(s.topic, b)
 	if err != nil {
 		log.Errorf("kafka producer send failed. err:%s", err)
 		derr := DescSeqID()

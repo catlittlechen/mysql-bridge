@@ -29,11 +29,12 @@ type Config struct {
 }
 
 type MysqlConfig struct {
-	Host         string `yaml:"host"`
-	Port         uint16 `yaml:"port"`
-	User         string `yaml:"user"`
-	Password     string `yaml:"password"`
-	InfoFileName string `yaml:"info_file_name"`
+	Host             string `yaml:"host"`
+	Port             uint16 `yaml:"port"`
+	User             string `yaml:"user"`
+	Password         string `yaml:"password"`
+	InfoFileName     string `yaml:"info_file_name"`
+	TargetkafkaTopic string `yaml:"target_kafka_topic"`
 }
 
 type RedisConfig struct {

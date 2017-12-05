@@ -7,10 +7,11 @@ server_id: 10086
 second: 1s
 
 mysql:
-    host: 127.0.0.1
-    port: 3306
-    user: root
-    password: 1232123
+    - host: 127.0.0.1
+      port: 3306
+      user: root
+      password: 1232123
+      target_kafka_topic: test1
 
 redis:
     host: 127.0.0.1:6379
