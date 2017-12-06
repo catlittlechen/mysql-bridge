@@ -1,11 +1,12 @@
-1. done master启动的时候，校验最后一个binlog文件。
-2. test 代替flume，自己控制数据传输。
-3. done slave支持多个数据库同时传递。感觉多传多没意义支持，支持多传一吧。
+1. done master 启动的时候，校验最后一个 binlog 文件。
+2. test 代替 flume，自己控制数据传输。
+3. done slave 支持多个数据库同时传递。感觉多传多没意义支持，支持多传一吧。
 4. channel支持根据丢包率优先选择数据流方向。
 5. seqID 递增保证性不高。
-6. channel 支持完美退出，虽然不支持也无所谓，master会过滤。
-7. channel kafkaSource支持partitionNum级别的并发发送。
+6. channel 支持完美退出，虽然不支持也无所谓，master 会过滤。
+7. channel kafkaSource 支持partitionNum级别的并发发送。
+7. done channel kafkaSink 支持批量
 
 
 
-binlog唯一性由seqID保证，如果保证真的唯一呢？测试发现，mysql的update是只要primaryKey存在就可以了，并不会对比前后数据是否一致。但是对于删减数据表的操作，唯一性就一定要保证。或者通过监控达到skipError的地步？批量操作可以更好的利用bbr，但是坏处也在这里了。
+binlog 唯一性由 seqID 保证，如果保证真的唯一呢？测试发现，mysql 的 update 是只要 primaryKey 存在就可以了，并不会对比前后数据是否一致。但是对于删减数据表的操作，唯一性就一定要保证。或者通过监控达到 skipError 的地步？批量操作可以更好的利用 bbr，但是坏处也在这里了。
