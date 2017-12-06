@@ -1,11 +1,11 @@
-1. done master 启动的时候，校验最后一个 binlog 文件。
-2. test 代替 flume，自己控制数据传输。
-3. done slave 支持多个数据库同时传递。感觉多传多没意义支持，支持多传一吧。
-4. channel支持根据丢包率优先选择数据流方向。
-5. seqID 递增保证性不高。
-6. channel 支持完美退出，虽然不支持也无所谓，master 会过滤。
-7. channel kafkaSource 支持partitionNum级别的并发发送。
-7. done channel kafkaSink 支持批量
+1. [done]   master 启动的时候，校验最后一个 binlog 文件。
+2. [test]   代替 flume，自己控制数据传输。
+3. [done]   slave 支持多个数据库同时传递。感觉多传多没意义支持，支持多传一吧。
+4. []       channel支持根据丢包率优先选择数据流方向。
+5. []       seqID 递增保证性不高。
+6. [#]      channel 支持完美退出，虽然不支持也无所谓，master 会过滤。
+7. []       channel kafkaSource 支持partitionNum级别的并发发送。
+8. [done]   channel kafkaSink 支持批量
 
 
 
