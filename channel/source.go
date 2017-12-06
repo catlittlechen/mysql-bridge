@@ -94,6 +94,12 @@ func (k *KafkaSourceAdapter) Consumer(data []byte) error {
 				return err
 			}
 
+			data, err = ZlibEncode(data)
+			if err != nil {
+				log.Errorf("zlibencode failed. err:%s", err)
+				return err
+			}
+
 			// kafka是源头的话，error直接一直重试吧。
 			for {
 				err = k.sink.Produce(data)

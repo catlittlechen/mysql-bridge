@@ -44,8 +44,14 @@ func (k *KafkaSinkAdapter) New() error {
 
 func (k *KafkaSinkAdapter) Produce(bMsg []byte) error {
 	log.Debugf("KafkaSinkAdapter Produce data:%s", bMsg)
+	var err error
+	bMsg, err = ZlibDecode(bMsg)
+	if err != nil {
+		return err
+	}
+
 	obj := new(Message)
-	err := json.Unmarshal(bMsg, obj)
+	err = json.Unmarshal(bMsg, obj)
 	if err != nil {
 		return err
 	}
