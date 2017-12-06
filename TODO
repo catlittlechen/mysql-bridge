@@ -3,8 +3,8 @@
 3. done slave支持多个数据库同时传递。感觉多传多没意义支持，支持多传一吧。
 4. channel支持根据丢包率优先选择数据流方向。
 5. seqID 递增保证性不高。
-6. channel 支持完美退出，虽然不支持也无所谓，master会过滤
-7. channel kafkaSource支持partitionNum级别的并发发送
+6. channel 支持完美退出，虽然不支持也无所谓，master会过滤。
+7. channel kafkaSource支持partitionNum级别的并发发送。
 
 
 

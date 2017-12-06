@@ -1,6 +1,8 @@
 package kafka
 
 import (
+	"errors"
+
 	"github.com/Shopify/sarama"
 	"github.com/satori/go.uuid"
 	log "github.com/sirupsen/logrus"
@@ -54,6 +56,27 @@ func (k *KafkaProducer) SendWithKey(topic string, key string, data []byte) (err 
 		Value: sarama.ByteEncoder(data),
 	}
 	_, _, err = k.p.SendMessage(msg)
+	return
+}
+
+// Send 发送信息到指定的topic
+func (k *KafkaProducer) SendWithKeyList(topic string, keyList []string, dataList [][]byte) (err error) {
+	if len(keyList) != len(dataList) {
+		err = errors.New("the length of keyList is not equal to dataList's")
+		return
+	}
+
+	msgList := make([]*sarama.ProducerMessage, len(keyList))
+	for index, key := range keyList {
+		msg := &sarama.ProducerMessage{
+			Topic: topic,
+			Key:   sarama.StringEncoder(key),
+			Value: sarama.ByteEncoder(dataList[index]),
+		}
+		msgList[index] = msg
+	}
+
+	err = k.p.SendMessages(msgList)
 	return
 }
 

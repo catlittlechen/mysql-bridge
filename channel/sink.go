@@ -71,11 +71,16 @@ func (k *KafkaSinkAdapter) Produce(bMsg []byte) error {
 		return err
 	}
 
-	for _, kv := range obj.Data {
-		err = k.kproducer.SendWithKey(obj.Topic, kv.Key, kv.Value)
-		if err != nil {
-			return err
-		}
+	keyList := make([]string, len(obj.Data))
+	dataList := make([][]byte, len(obj.Data))
+	for index, kv := range obj.Data {
+		keyList[index] = kv.Key
+		dataList[index] = kv.Value
+	}
+
+	err = k.kproducer.SendWithKeyList(obj.Topic, keyList, dataList)
+	if err != nil {
+		return err
 	}
 
 	return nil
