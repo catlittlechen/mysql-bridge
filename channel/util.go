@@ -24,14 +24,12 @@ func ZlibDecode(data []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer func() {
-		_ = r.Close()
-	}()
 
 	_, err = io.Copy(buf, r)
 	if err != nil {
 		return nil, err
 	}
+	_ = r.Close()
 
 	return buf.Bytes(), nil
 }
@@ -39,13 +37,11 @@ func ZlibDecode(data []byte) ([]byte, error) {
 func ZlibEncode(data []byte) ([]byte, error) {
 	buf := new(bytes.Buffer)
 	w := zlib.NewWriter(buf)
-	defer func() {
-		_ = w.Close()
-	}()
 
 	_, err := w.Write(data)
 	if err != nil {
 		return nil, err
 	}
+	_ = w.Close()
 	return buf.Bytes(), nil
 }

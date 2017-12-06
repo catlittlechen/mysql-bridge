@@ -64,7 +64,7 @@ func (client *Source) handler(conn net.Conn) {
 		// deal with data
 		err = client.handlerFunc(data)
 		if err != nil {
-			log.Error("deal with data failed. err:%s", err)
+			log.Errorf("deal with data failed. err:%s", err)
 
 			werr := writePacket(conn, failData)
 			if werr != nil {
