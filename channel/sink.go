@@ -24,7 +24,22 @@ func (l *LogSinkAdapter) New() error {
 }
 
 func (l *LogSinkAdapter) Produce(bMsg []byte) error {
-	log.Info(string(bMsg))
+	var err error
+	bMsg, err = ZlibDecode(bMsg)
+	if err != nil {
+		return err
+	}
+
+	obj := new(Message)
+	err = json.Unmarshal(bMsg, obj)
+	if err != nil {
+		return err
+	}
+
+	for _, kv := range obj.Data {
+		log.Infof("key: %s, value:%s", kv.Key, kv.Value)
+	}
+
 	return nil
 }
 
