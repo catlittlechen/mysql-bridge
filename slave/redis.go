@@ -41,25 +41,19 @@ func NewRedisPool(host string, db int) *redis.Pool {
 
 var redisPool *redis.Pool
 
-const (
-	redisMasterSeqKey = "master_binlog_seqid"
-)
-
 func InitRedis() error {
 	redisPool = NewRedisPool(slaveCfg.Redis.Host, slaveCfg.Redis.Db)
 	return nil
 }
 
 // TODO 如果独立部署这部分的逻辑做成分发器，可以开发出随意添加同步表的功能
-func GetSeqID() (uint64, error) {
+func GetSeqID(key string) (uint64, error) {
 	// TODO 做成事务
 
 	conn := redisPool.Get()
 	defer func() {
 		_ = conn.Close()
 	}()
-
-	key := redisMasterSeqKey
 
 	value, err := redis.Uint64(conn.Do("INCRBY", key, 1))
 	if err != nil {
@@ -80,13 +74,11 @@ func GetSeqID() (uint64, error) {
 	return value, nil
 }
 
-func DescSeqID() error {
+func DescSeqID(key string) error {
 	conn := redisPool.Get()
 	defer func() {
 		_ = conn.Close()
 	}()
-
-	key := redisMasterSeqKey
 
 	value, err := redis.Uint64(conn.Do("INCRBY", key, -1))
 	if err != nil {

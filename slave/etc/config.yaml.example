@@ -13,6 +13,7 @@ mysql:
       password: 1232123
       info_file_name: master.info
       target_kafka_topic: test1
+      seq_key: master_binlog_seqid
 
 redis:
     host: 127.0.0.1:6379
