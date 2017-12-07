@@ -21,11 +21,11 @@ var (
 
 // Syncer 读取MySQL binlog，写入Kafka
 type Syncer struct {
-	syncer     *replication.BinlogSyncer
-	info       *masterInfo
-	topic      string
-	closed     bool
-	runChannel chan bool
+	syncer      *replication.BinlogSyncer
+	info        *masterInfo
+	mysqlConfig MysqlConfig
+	closed      bool
+	runChannel  chan bool
 }
 
 func NewSyncer(mysqlConfig *MysqlConfig) (*Syncer, error) {
@@ -49,11 +49,11 @@ func NewSyncer(mysqlConfig *MysqlConfig) (*Syncer, error) {
 	}
 
 	return &Syncer{
-		syncer:     replication.NewBinlogSyncer(cfg),
-		info:       info,
-		topic:      mysqlConfig.TargetkafkaTopic,
-		closed:     false,
-		runChannel: make(chan bool, 1),
+		syncer:      replication.NewBinlogSyncer(cfg),
+		info:        info,
+		mysqlConfig: *mysqlConfig,
+		closed:      false,
+		runChannel:  make(chan bool, 1),
 	}, nil
 }
 
@@ -178,7 +178,7 @@ func (s *Syncer) record(dataList [][]byte, name string, pos uint32) (err error) 
 		seqID uint64
 		b     []byte
 	)
-	seqID, err = GetSeqID()
+	seqID, err = GetSeqID(s.mysqlConfig.SeqKey)
 	if err != nil {
 		log.Errorf("getSeqID failed. err:%s", err)
 		return
@@ -191,10 +191,10 @@ func (s *Syncer) record(dataList [][]byte, name string, pos uint32) (err error) 
 		return
 	}
 
-	err = kproducer.Send(s.topic, b)
+	err = kproducer.Send(s.mysqlConfig.TargetkafkaTopic, b)
 	if err != nil {
 		log.Errorf("kafka producer send failed. err:%s", err)
-		derr := DescSeqID()
+		derr := DescSeqID(s.mysqlConfig.SeqKey)
 		if derr != nil {
 			// not panic, but alerover
 			panic(derr)

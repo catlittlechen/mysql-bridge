@@ -35,6 +35,7 @@ type MysqlConfig struct {
 	Password         string `yaml:"password"`
 	InfoFileName     string `yaml:"info_file_name"`
 	TargetkafkaTopic string `yaml:"target_kafka_topic"`
+	SeqKey           string `yaml:"seq_key"`
 }
 
 type RedisConfig struct {
