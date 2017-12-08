@@ -24,7 +24,22 @@ func (l *LogSinkAdapter) New() error {
 }
 
 func (l *LogSinkAdapter) Produce(bMsg []byte) error {
-	log.Info(string(bMsg))
+	var err error
+	bMsg, err = ZlibDecode(bMsg)
+	if err != nil {
+		return err
+	}
+
+	obj := new(Message)
+	err = json.Unmarshal(bMsg, obj)
+	if err != nil {
+		return err
+	}
+
+	for _, kv := range obj.Data {
+		log.Infof("key: %s, value:%s", kv.Key, kv.Value)
+	}
+
 	return nil
 }
 
@@ -44,17 +59,28 @@ func (k *KafkaSinkAdapter) New() error {
 
 func (k *KafkaSinkAdapter) Produce(bMsg []byte) error {
 	log.Debugf("KafkaSinkAdapter Produce data:%s", bMsg)
-	obj := new(Message)
-	err := json.Unmarshal(bMsg, obj)
+	var err error
+	bMsg, err = ZlibDecode(bMsg)
 	if err != nil {
 		return err
 	}
 
-	for _, kv := range obj.Data {
-		err = k.kproducer.SendWithKey(obj.Topic, kv.Key, kv.Value)
-		if err != nil {
-			return err
-		}
+	obj := new(Message)
+	err = json.Unmarshal(bMsg, obj)
+	if err != nil {
+		return err
+	}
+
+	keyList := make([]string, len(obj.Data))
+	dataList := make([][]byte, len(obj.Data))
+	for index, kv := range obj.Data {
+		keyList[index] = kv.Key
+		dataList[index] = kv.Value
+	}
+
+	err = k.kproducer.SendWithKeyList(obj.Topic, keyList, dataList)
+	if err != nil {
+		return err
 	}
 
 	return nil
