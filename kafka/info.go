@@ -64,7 +64,9 @@ func loadOffsetInfo(dataDir string, ticker time.Duration) (*OffsetInfo, error) {
 		ticker := time.Tick(ticker)
 		for range ticker {
 			if time.Now().Unix()%60 == 0 {
+				m.Lock()
 				log.Infof("offset info %+v\n", m.PartitionOffset)
+				m.Unlock()
 			}
 			err := m.Save()
 			if err != nil {

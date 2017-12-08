@@ -4,7 +4,7 @@
 4. []       channel支持根据丢包率优先选择数据流方向。
 5. []       seqID 递增保证性不高。
 6. [#]      channel 支持完美退出，虽然不支持也无所谓，master 会过滤。
-7. []       channel kafkaSource 支持partitionNum级别的并发发送。
+7. [done]       channel kafkaSource 支持partitionNum级别的并发发送。
 8. [done]   channel kafkaSink 支持批量
 
 

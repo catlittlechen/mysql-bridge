@@ -19,14 +19,14 @@ type SourceAdapter interface {
 }
 
 type KafkaSourceAdapter struct {
-	kconsumer *kafka.KafkaConsumer
+	kconsumer *kafka.KafkaPartitionConsumer
 	sink      SinkAdapter
 }
 
 func (k *KafkaSourceAdapter) New(sink SinkAdapter) error {
 	k.sink = sink
 	var err error
-	k.kconsumer, err = kafka.NewKafkaConsumer(channelCfg.KafkaConsumer)
+	k.kconsumer, err = kafka.NewKafkaPartitionConsumer(channelCfg.KafkaConsumer)
 	if err != nil {
 		return err
 	}
@@ -36,22 +36,35 @@ func (k *KafkaSourceAdapter) New(sink SinkAdapter) error {
 		}
 	}()
 
-	go func() {
-		kerr := k.Consumer(nil)
-		if kerr != nil {
-			log.Errorf("kconsumer consumber failed. err:%s", err)
-		}
-		return
-	}()
-	return nil
-	// do something
+	err = k.Consumer(nil)
+	if err != nil {
+		log.Errorf("kconsumer consumer failed. err:%s", err)
+	}
+	return err
 }
 
 func (k *KafkaSourceAdapter) Consumer(data []byte) error {
 	log.Debugf("KafkaSourceAdapter Consumer data:%s", data)
 
-	ticker := time.Tick(channelCfg.KafkaConsumerExt.MaxIdelTime)
 	kcmChannel := k.kconsumer.Message()
+	if kcmChannel == nil {
+		return errors.New("kafka consumer get message channel is nil")
+	}
+	for index := range kcmChannel {
+		go func(id int) {
+			log.Infof("KafkaSourceAdapter get channel. index:%d", id)
+			kerr := k.consumer(kcmChannel[id])
+			if kerr != nil {
+				log.Errorf("kconsumer consumer failed. err:%s", kerr)
+			}
+			return
+		}(index)
+	}
+	return nil
+}
+
+func (k *KafkaSourceAdapter) consumer(channel chan *kafka.ConsumerMessage) error {
+	ticker := time.Tick(channelCfg.KafkaConsumerExt.MaxIdelTime)
 	var msg *kafka.ConsumerMessage
 
 	topic := channelCfg.KafkaConsumer.Topic
@@ -71,7 +84,7 @@ func (k *KafkaSourceAdapter) Consumer(data []byte) error {
 			if count != 0 {
 				clean = true
 			}
-		case msg = <-kcmChannel:
+		case msg = <-channel:
 			log.Debugf("kcmChannel get msg: %+v", msg)
 			if msg == nil {
 				log.Warnf("kcmChannel get msg is nil")

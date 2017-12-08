@@ -52,7 +52,7 @@ func (client *Source) handler(conn net.Conn) {
 	defer func() {
 		_ = conn.Close()
 	}()
-	bufferReader := bufio.NewReaderSize(conn, 4096)
+	bufferReader := bufio.NewReaderSize(conn, 409600)
 
 	for {
 		data, err := readPacket(bufferReader)
