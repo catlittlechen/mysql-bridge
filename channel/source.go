@@ -50,14 +50,15 @@ func (k *KafkaSourceAdapter) Consumer(data []byte) error {
 	if kcmChannel == nil {
 		return errors.New("kafka consumer get message channel is nil")
 	}
-	for _, channel := range kcmChannel {
-		go func() {
-			kerr := k.consumer(channel)
+	for index := range kcmChannel {
+		go func(id int) {
+			log.Infof("KafkaSourceAdapter get channel. index:%d", id)
+			kerr := k.consumer(kcmChannel[id])
 			if kerr != nil {
 				log.Errorf("kconsumer consumer failed. err:%s", kerr)
 			}
 			return
-		}()
+		}(index)
 	}
 	return nil
 }
