@@ -100,7 +100,7 @@ func (syncer *Syncer) Run() (err error) {
 				transaction = append(transaction, event.RawData)
 				size += len(event.RawData)
 
-			} else if _, ok := slaveCfg.Table.RepMap[strings.ToLower(string(qe.Schema))]; ok {
+			} else if _, ok := syncer.mysqlConfig.Table.RepMap[strings.ToLower(string(qe.Schema))]; ok {
 				// DML语句
 				err = syncer.record([][]byte{event.RawData}, name, event.Header.LogPos)
 				if err != nil {
@@ -111,9 +111,9 @@ func (syncer *Syncer) Run() (err error) {
 		case replication.TABLE_MAP_EVENT:
 			shouldWrite = false
 			te := event.Event.(*replication.TableMapEvent)
-			if _, ok := slaveCfg.Table.RepMap[strings.ToLower(string(te.Schema))]; ok {
+			if _, ok := syncer.mysqlConfig.Table.RepMap[strings.ToLower(string(te.Schema))]; ok {
 				table := strings.ToLower(string(te.Table))
-				for _, re := range slaveCfg.Table.RepMap[strings.ToLower(string(te.Schema))] {
+				for _, re := range syncer.mysqlConfig.Table.RepMap[strings.ToLower(string(te.Schema))] {
 					if re.MatchString(table) {
 						transaction = append(transaction, event.RawData)
 						size += len(event.RawData)
@@ -153,7 +153,7 @@ func (syncer *Syncer) Run() (err error) {
 			} else if shouldWrite {
 				transaction = append(transaction, event.RawData)
 				size += len(event.RawData)
-				if size > slaveCfg.Table.MaxSize {
+				if size > syncer.mysqlConfig.Table.MaxSize {
 					err = syncer.record(transaction, name, event.Header.LogPos)
 					if err != nil {
 						log.Errorf("syncer record failed. binlog: %s, pos: %d, eventType: %s, err: %s", name, event.Header.LogPos, event.Header.EventType.String(), err.Error())

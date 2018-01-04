@@ -14,6 +14,11 @@ mysql:
       info_file_name: master.info
       target_kafka_topic: test1
       seq_key: master_binlog_seqid
+      table:
+          replication_topic: mysql_test
+          replication:
+              - mysql_slave_test@a*
+          max_size: 65536
 
 redis:
     host: 127.0.0.1:6379
@@ -23,12 +28,6 @@ kafka:
     broker_list:
         - 127.0.0.1:9092
     flush_time: 1s
-
-table:
-    replication_topic: mysql_test
-    replication:
-        - mysql_slave_test@a*
-    max_size: 65536
 
 monitor:
     host: 0.0.0.0
