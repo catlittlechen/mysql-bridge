@@ -24,18 +24,18 @@ type Config struct {
 	Mysql    []MysqlConfig             `yaml:"mysql"`
 	Redis    RedisConfig               `yaml:"redis"`
 	Kafka    kafka.KafkaProducerConfig `yaml:"kafka"`
-	Table    TableConfig               `yaml:"table"`
 	Monitor  MonitorConfig             `yaml:"monitor"`
 }
 
 type MysqlConfig struct {
-	Host             string `yaml:"host"`
-	Port             uint16 `yaml:"port"`
-	User             string `yaml:"user"`
-	Password         string `yaml:"password"`
-	InfoFileName     string `yaml:"info_file_name"`
-	TargetkafkaTopic string `yaml:"target_kafka_topic"`
-	SeqKey           string `yaml:"seq_key"`
+	Host             string      `yaml:"host"`
+	Port             uint16      `yaml:"port"`
+	User             string      `yaml:"user"`
+	Password         string      `yaml:"password"`
+	InfoFileName     string      `yaml:"info_file_name"`
+	TargetkafkaTopic string      `yaml:"target_kafka_topic"`
+	SeqKey           string      `yaml:"seq_key"`
+	Table            TableConfig `yaml:"table"`
 }
 
 type RedisConfig struct {
@@ -45,9 +45,8 @@ type RedisConfig struct {
 
 // database@table
 type TableConfig struct {
-	ReplicationTopic string   `yaml:"replication_topic"`
-	Replication      []string `yaml:"replication"`
-	MaxSize          int      `yaml:"max_size"`
+	Replication []string `yaml:"replication"`
+	MaxSize     int      `yaml:"max_size"`
 
 	RepMap map[string][]*regexp.Regexp `yaml:"-"`
 }
@@ -64,19 +63,21 @@ func ParseConfigFile(filepath string) error {
 		return err
 	}
 
-	slaveCfg.Table.RepMap = make(map[string][]*regexp.Regexp)
 	var database, table string
-	for _, str := range slaveCfg.Table.Replication {
-		array := strings.Split(str, "@")
-		if len(array) != 2 {
-			return errors.New("the format of replication shoud be database@table")
+	for index := range slaveCfg.Mysql {
+		slaveCfg.Mysql[index].Table.RepMap = make(map[string][]*regexp.Regexp)
+		for _, str := range slaveCfg.Mysql[index].Table.Replication {
+			array := strings.Split(str, "@")
+			if len(array) != 2 {
+				return errors.New("the format of replication shoud be database@table")
+			}
+			database = array[0]
+			table = array[1]
+			if _, ok := slaveCfg.Mysql[index].Table.RepMap[database]; !ok {
+				slaveCfg.Mysql[index].Table.RepMap[database] = make([]*regexp.Regexp, 0)
+			}
+			slaveCfg.Mysql[index].Table.RepMap[database] = append(slaveCfg.Mysql[index].Table.RepMap[database], regexp.MustCompile(table))
 		}
-		database = array[0]
-		table = array[1]
-		if _, ok := slaveCfg.Table.RepMap[database]; !ok {
-			slaveCfg.Table.RepMap[database] = make([]*regexp.Regexp, 0)
-		}
-		slaveCfg.Table.RepMap[database] = append(slaveCfg.Table.RepMap[database], regexp.MustCompile(table))
 	}
 
 	return nil
